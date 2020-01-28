@@ -16,6 +16,7 @@ SELECT ie.subject_id, ie.icustay_id, ce.charttime
     WHEN itemid = 220739 AND valuenum >= 1 AND valuenum <= 4 THEN 'GCSeye' -- GCS Eye opening
     WHEN itemid = 223900 AND valuenum >= 1 AND valuenum <= 5 THEN 'GCSverbal' -- GCS - Verbal Response
     WHEN itemid = 223901 AND valuenum >= 1 AND valuenum <= 6 THEN 'GCSmotor' -- GCS - Motor Response
+    --TODO: ADD CVP, PAP extraction (PAPSys, PAPDias, PAPMean)
     ELSE NULL END
   AS vital_sign
 , CASE

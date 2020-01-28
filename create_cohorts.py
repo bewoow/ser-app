@@ -1,7 +1,7 @@
 ## Prerequisites: Account at PhysioNet + link to AWS + 'aws configure'
 
 # Import libraries
-from __future__ import print_function
+# from __future__ import print_function
 
 import datetime
 import numpy as np
@@ -10,6 +10,8 @@ import os
 import re
 import dill
 import importlib
+import wfdb
+import requests
 
 import matplotlib
 matplotlib.rcParams['figure.dpi'] = 144
@@ -21,11 +23,12 @@ from pyathena.util import as_pandas
 import boto3
 from botocore.client import ClientError
 
-from helper_functions import create_table, query_to_dataframe, get_chart_data
+from helper_functions import create_table, query_to_dataframe, get_chart_data, extract_wfdb_numerics
 
 # Temporary for notebooks
-importlib.reload(helper_functions)
 pd.options.display.max_rows = None
+import helper_functions
+importlib.reload(helper_functions)
 
 s3 = boto3.resource('s3')
 client = boto3.client('sts')
@@ -110,8 +113,8 @@ print('Found {:d} self-extubation events in total!'.format(df_se_cohort.shape[0]
 df_se_cohort_reduced = df_se_cohort.copy()
 icustays_multiple_se = df_se_cohort_reduced['icustay_id'].value_counts() > 1 # icustay_id with more than one event
 
-for icu_id in icustays_multiple_se[icustays_multiple_se == True].index:
-    instances = df_se_cohort_reduced[df_se_cohort_reduced['icustay_id'] == icu_id]
+for icustay_id in icustays_multiple_se[icustays_multiple_se == True].index:
+    instances = df_se_cohort_reduced[df_se_cohort_reduced['icustay_id'] == icustay_id]
 
     # Removing table entries (of a single patient) with MV duration less than the maximum
     max_duration = instances['duration_hours'].max()
@@ -121,7 +124,7 @@ for icu_id in icustays_multiple_se[icustays_multiple_se == True].index:
 
     # Removing possible entries associated with the same SE event (selecting the
     # entry with SE charted time closer to the end of MV)
-    instances = df_se_cohort_reduced[df_se_cohort_reduced['icustay_id'] == icu_id]
+    instances = df_se_cohort_reduced[df_se_cohort_reduced['icustay_id'] == icustay_id]
     if instances.shape[0] > 1: # not necessary, but included to make sure that a single entry is not deleted
         instances = instances.assign(end_mv_se_diff=instances['se_charttime'] - instances['vent_end'])
 
@@ -139,24 +142,46 @@ df_se_final_cohort = df_se_cohort_reduced[df_se_cohort_reduced['duration_hours']
 # plt.hist(df_se_final_cohort['duration_hours'].dropna(), 20)
 
 chart_data = dict()
-for icustay in df_se_final_cohort['icustay_id'].values:
-    start_time = str(df_se_final_cohort[df_se_final_cohort.icustay_id == icustay]['vent_start'].iloc[0])
-    end_time = str(df_se_final_cohort[df_se_final_cohort.icustay_id == icustay]['vent_end'].iloc[0])
-    chart_data[icustay] = get_chart_data(cursor, str(icustay), start_time, end_time)
+for icustay_id in df_se_final_cohort['icustay_id'].values[:10]:
+    mv_start_time = df_se_final_cohort[df_se_final_cohort.icustay_id == icustay_id]['vent_start'].iloc[0]
+    mv_end_time = df_se_final_cohort[df_se_final_cohort.icustay_id == icustay_id]['vent_end'].iloc[0]
+    subject_id = df_se_final_cohort[df_se_final_cohort.icustay_id == icustay_id]['subject_id'].iloc[0]
+    chart_data[icustay_id] = get_chart_data(cursor, subject_id, icustay_id, mv_start_time, mv_end_time)
 
+chart_data.keys()
+# Get numerics from MIMIC-III Waveform Database (matched with MIMIC-III Clinical Database)
+# matched_record_list = wfdb.io.get_record_list('mimic3wdb/matched')
+html = requests.get('https://archive.physionet.org/physiobank/database/mimic3wdb/matched/RECORDS-numerics')
+numerics_record_list = html.text
+
+numerics = dict()
+for icustay_id in df_se_final_cohort['icustay_id'].values:
+    subject_id = df_se_final_cohort[df_se_final_cohort.icustay_id == icustay_id]['subject_id'].iloc[0]
+    numerics[icustay_id] = extract_wfdb_numerics(subject_id, numerics_record_list)
+numerics
+
+icustay_id = list(numerics.keys())[1]
+
+plt.plot(numerics[icustay_id]['time'], numerics[icustay_id]['HR'])
+plt.plot(se_charttime, 20, '*')
+plt.plot
+
+# icustay_id = 235261 -> 491
 
 
 # df_test[df_test['vital_sign'] == 'GCStot'].sort_values('charttime')
 #
 # plt.plot(df_test[df_test['vital_sign'] == 'GCStot'].loc[:,['charttime']], df_test[df_test['vital_sign'] == 'GCStot'].loc[:,['valuenum']], '.')
 #
-#
-# df_1 = df_test[df_test['vital_sign'] == 'DBP'].sort_values(by='charttime')
-# df_4 = df_test[df_test['vital_sign'] == 'DBP'].groupby(['charttime']).mean()
+df_test = chart_data[icustay_id]
+df_1 = df_test[df_test['vital_sign'] == 'RR'].sort_values(by='charttime')
+df_4 = df_test[df_test['vital_sign'] == 'RR'].groupby(['charttime']).mean()
 # df_2 = df_test[df_test['vital_sign'] == 'MBP'].sort_values(by='charttime')
 # df_3 = df_test[df_test['vital_sign'] == 'SBP'].groupby(['charttime']).mean()
 #
 # plt.plot(df_2['charttime'], df_2['valuenum'], '*')
 # plt.plot(df_3.index, df_3['valuenum'], '.r')
 # plt.plot(df_1['charttime'], df_1['valuenum'], 'xg')
-# plt.plot(df_4.index, df_4['valuenum'], '.r')
+plt.plot(df_4.index, df_4['valuenum'], '.r')
+plt.plot(df_numerics['time'], df_numerics['RESP'])
+plt.plot(se_charttime, 20, '*')
