@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+
+<body>
+    {% extends "layout.html" %}
+    {% block content %}
+    <div class="about_me">
+        <h1>About me</h1>
+        <div class="auto-resize-small">
+             <img src={{ url_for('static', filename='img/nikos.jpg') }} </img>
+        </div>
+    </div>
+    {% endblock %}
+</body>
+
+</html>

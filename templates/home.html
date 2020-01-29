@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+
+<body>
+    {% extends "layout.html" %}
+    {% block content %}
+    <div class="home">
+        <h1>The SeR – Self-extubation Risk</h1>
+        <p></p>
+
+        <form method="POST" action="/">
+            <span> Please make your selection: </span>
+                <select name=icustay_id_selection>
+                    <option selected disabled hidden value="none">Select an Option</option>
+                    {% for icustay_id in icustay_ids %}
+                        {% if icustay_id == selected_id and icustay_id != ''%}
+                            <option selected value="{{ icustay_id }}">{{ icustay_id }}</option>"
+                        {% else %}
+                            <option value="{{ icustay_id }}">{{ icustay_id }}</option>"
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            <button type="submit" class="btn btn-default">Go</button>
+        </form>
+        The selected "icustay_id" is: {{ selected_id }}
+    </div>
+    {% endblock %}
+</body>
+
+</html>

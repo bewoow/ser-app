@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+
+<body>
+    {% extends "layout.html" %}
+    {% block content %}
+    <div class="about_se">
+        <h1>Mechanical Ventilation</h1>
+        <p> Mechanical ventilation (MV) is a life-saving therapy
+            It is typically instituted when a patient is unable to maintain adequate ventilation,
+            and hence gas exchange, on their own. One of the most widely used MV techniques in intensive care units (ICU)
+            is invasive ventilation which provides access to the lower airways through tracheostomy or an endotracheal tube (ET tube).
+            Hence, it establishes a major advance in the management of patients with respiratory distress.
+            In addition to ventilation management during the course of MV, extubation, or liberation from the ventilator,
+            is considered a critical component for a successful therapy. If reintubation after extubation is required, patient
+            recovery may be adversely affected. This can lead to worse patient outcomes, longer time of mechanical ventilation,
+             extended length of stay, and increased hospitalization costs.</p>
+        <div class="auto-resize-medium">
+             <img src={{ url_for('static', filename='img/mech_vent_patient.png') }} </img>
+        </div>
+        <h1>What is self-extubation?</h1>
+        <p>Planned extubation refers to weaning from mechanical ventilation and
+            removal of the endotracheal tube as planned by the medical team following
+            well-established protocolized procedures (e.g., reduction of pressure support, spontaneous breathing trials, etc.).
+            Nevertheless, unplanned extubation, whether accidental due to the personnel’s inappropriate manipulation of the ET tube
+            or deliberate due to the patient’s action, is a real problem in ICUs.
+            One study reports that the estimated incidence of unplanned extubation is around 10%, with 60% of these unplanned
+            extubations requiring re-intubation [1]. The clear majority (62.8%–96.4%) of unplanned extubations in adult ICUs are
+            the result of patient self-extubation [1]–[3]. This is typically attributed to patient agitation.
+            Being intubated is uncomfortable for patients, particularly for those spontaneously breathing, and can occasionally
+            lead them to try to pull out the endotracheal tube. While not directly linked with increased mortality, unplanned
+            extubation has been associated with longer times on mechanical ventilation and longer ICU and hospital stay, while
+            re-intubation is recognized as a risk factor for nosocomial pneumonia [1].
+        </p>
+        <div class="auto-resize-large">
+            <img src={{ url_for('static', filename='img/ser_concept.png') }} </img>
+        </div>
+        <h1> References</h1>
+        <ol>
+            <li> A. de Lassence et al., “Impact of Unplanned Extubation and Reintubation after Weaning on Nosocomial
+                Pneumonia Risk in the Intensive Care Unit A Prospective Multicenter Study,” Anesthesiol. J. Am. Soc. Anesthesiol.,
+                vol. 97, no. 1, pp. 148–156, Jul. 2002.</li>
+            <li> P. Kiekkas, D. Aretha, E. Panteli, G. I. Baltopoulos, and K. S. Filos, “Unplanned extubation in critically ill
+                adults: clinical review,” Nurs. Crit. Care, vol. 18, no. 3, pp. 123–134, 2012.</li>
+            <li> P. Moons, M. Boriau, and P. Ferdinande, “Self-extubation risk assessment tool: predictive validity in a real-life
+                setting,” Nurs. Crit. Care, vol. 13, no. 6, pp. 310–314, 2008.</li>
+        </ol>
+    </div>
+    {% endblock %}
+</body>
+
+</html>
