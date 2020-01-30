@@ -6,6 +6,7 @@ import requests
 from pyathena.util import as_pandas
 from datetime import datetime
 
+
 def create_table(cursor, query_file_name, queries_dir='./sql_queries', database_name='mimiciii', del_table=False):
     """Check, create, and optionally delete table in AWS.
     """
@@ -15,7 +16,7 @@ def create_table(cursor, query_file_name, queries_dir='./sql_queries', database_
     with open(f) as fp:
         query = ''.join(fp.readlines())
 
-    table_name = re.search(r'CREATE TABLE ([A-Z]*[.][\w]*)', query).group(1).\
+    table_name = re.search(r'CREATE TABLE ([A-Z]*[.][\w]*)', query).group(1). \
         replace('DATABASE', database_name)
 
     if del_table:
@@ -30,6 +31,7 @@ def create_table(cursor, query_file_name, queries_dir='./sql_queries', database_
 
     return table_name
 
+
 def table_exists_in_aws(cursor, table_name):
     """Check if table exists in AWS S3."""
     try:
@@ -39,6 +41,7 @@ def table_exists_in_aws(cursor, table_name):
     except Exception:
         print('Table "{}" does NOT exist in AWS.'.format(table_name))
         return False
+
 
 def query_to_dataframe(cursor, query, df_file_name='', data_dir='./data'):
     """Check presence of stored dataframe in the disk. If not, run query and
