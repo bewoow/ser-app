@@ -7,22 +7,46 @@
     <div class="home">
         <h1>The SeR – Self-extubation Risk</h1>
         <p></p>
-
+        <p></p>
+        <bigger-font> MIMIC-III includes {{ num_se }} distinct self-extubation events.</bigger-font>
+        <p></p>
         <form method="POST" action="/">
-            <span> Please make your selection: </span>
+            <span> Please select the 'icustay_id' of interest: </span>
                 <select name=icustay_id_selection>
                     <option selected disabled hidden value="none">Select an Option</option>
                     {% for icustay_id in icustay_ids %}
-                        {% if icustay_id == selected_id and icustay_id != ''%}
+                        {% if icustay_id == sel_icustay_id and icustay_id != ''%}
                             <option selected value="{{ icustay_id }}">{{ icustay_id }}</option>"
                         {% else %}
                             <option value="{{ icustay_id }}">{{ icustay_id }}</option>"
                         {% endif %}
                     {% endfor %}
                 </select>
-            <button type="submit" class="btn btn-default">Go</button>
+            <button type="submit" class="btn btn-default">Proceed</button>
         </form>
-        The selected "icustay_id" is: {{ selected_id }}
+        <p></p><p></p>
+        <hr>
+        {% if sel_icustay_id !=''%}
+            <h2>Information about the selected event</h2>
+            ICU Stay ID: <bigger-font>{{ sel_icustay_id }}</bigger-font><p></p>
+            Subject ID: <bigger-font>{{ sel_subject_id }}</bigger-font><p></p>
+            Admission ID: <bigger-font>{{ sel_adm_id }}</bigger-font><p></p>
+
+            Weight: <bigger-font>{{ sel_weight }} kg</bigger-font><p></p>
+            Height: <bigger-font>{{ sel_height }} cm</bigger-font><p></p>
+            BMI: <bigger-font>{{ sel_bmi }} kg/m^2</bigger-font><p></p>
+
+            Start of Mechanical Ventilation: <bigger-font>{{ sel_start_mv }}</bigger-font><p></p>
+            End of Mechanical Ventilation: <bigger-font>{{ sel_end_mv }}</bigger-font><p></p>
+            Duration of Mechanical Ventilation before Self-extubation: <bigger-font>{{ sel_dur_mv }} hours</bigger-font><p></p>
+
+
+            <form method="GET" action="/plot">
+                <input type="hidden" name="sel_id" value={{ sel_icustay_id }}>
+                <button type="submit" class="btn btn-default">Analyze</button>
+            </form>
+        {% endif %}
+
     </div>
     {% endblock %}
 </body>

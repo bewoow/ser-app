@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+
+<body>
+    {% extends "layout.html" %}
+    {% block content %}
+    <div class="about_mimic">
+        <h1>MIMIC-III Clinical Database</h1>
+        <p> MIMIC-III is a large, freely-available database comprising deidentified health-related data
+            associated with over forty thousand patients who stayed in critical care units of the Beth
+            Israel Deaconess Medical Center between 2001 and 2012.</p>
+
+        <p></p>
+
+        <p>The database includes information such as demographics, vital sign measurements made at the
+            bedside (~1 data point per hour), laboratory test results, procedures, medications, caregiver notes,
+            imaging reports, and mortality (including post-hospital discharge).</p>
+
+        </p>MIMIC supports a diverse range of analytic studies spanning epidemiology, clinical decision-rule
+        improvement, and electronic tool development. It is notable for three factors:</p>
+        <ol>
+            <li>it is freely available to researchers worldwide</li>
+            <li>it encompasses a diverse and very large population of ICU patients</li>
+            <li>it contains highly granular data including lab results, vital signs, medications, and more</li>
+        </ol>
+
+        <p></p>
+        <bold-font> For more information look here: </bold-font>
+            <a href="https://mimic.physionet.org/">https://mimic.physionet.org/</a>
+
+        <h2> References</h2>
+        <ol>
+            <li> Johnson, A., Pollard, T., Mark, R. (2016). MIMIC-III Clinical Database. PhysioNet. doi:10.13026/C2XW26</li>
+            <li> Johnson, A. E. W., Pollard, T. J., Shen, L., Lehman, L. H., Feng, M., Ghassemi, M., Moody, B., Szolovits,
+                 P., Celi, L. A., & Mark, R. G. (2016). MIMIC-III, a freely accessible critical care database. Scientific Data, 3, 160035.</li>
+        </ol>
+    </div>
+    {% endblock %}
+</body>
+
+</html>
