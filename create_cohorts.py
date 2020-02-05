@@ -46,6 +46,7 @@ data_dir = './data'
 if not os.path.exists(data_dir):
     os.mkdir(data_dir)
 
+#TODO: we don't need to verify tables in AWS if all data have been downloaded
 def get_all_se_occurences():
     # Create table that includes the type (generally) of ventilation therapy. It
     # includes timestatmps indicating initation of oxygen therapy, initation of MV,

@@ -22,21 +22,26 @@ def home():
                                sel_icustay_id='', sel_subject_id='', sel_adm_id='', sel_weight='', sel_height='',
                                sel_bmi='', sel_start_mv='', sel_end_mv='', sel_dur_mv='')
     else:
-        sel_icustay_id = request.form.get('icustay_id_selection')
-        sel_subject_id = str(se_cohort[se_cohort['icustay_id'] == int(sel_icustay_id)]['subject_id'].iloc[0])
-        sel_adm_id = str(se_cohort[se_cohort['icustay_id'] == int(sel_icustay_id)]['hadm_id'].iloc[0])
-        sel_weight = str(se_cohort[se_cohort['icustay_id'] == int(sel_icustay_id)]['weight'].iloc[0])
-        sel_height = str(se_cohort[se_cohort['icustay_id'] == int(sel_icustay_id)]['height'].iloc[0])
-        sel_bmi = str(np.round(se_cohort[se_cohort['icustay_id'] == int(sel_icustay_id)]['bmi'].iloc[0], 2))
-        sel_start_mv = str(se_cohort[se_cohort['icustay_id'] == int(sel_icustay_id)]['vent_start'].iloc[0])
-        sel_end_mv = str(se_cohort[se_cohort['icustay_id'] == int(sel_icustay_id)]['vent_end'].iloc[0])
-        sel_dur_mv = str(
-            np.round(se_cohort[se_cohort['icustay_id'] == int(sel_icustay_id)]['duration_hours'].iloc[0], 2))
+        if request.form.get('icustay_id_selection'):
+            sel_icustay_id = request.form.get('icustay_id_selection')
+            sel_subject_id = str(se_cohort[se_cohort['icustay_id'] == int(sel_icustay_id)]['subject_id'].iloc[0])
+            sel_adm_id = str(se_cohort[se_cohort['icustay_id'] == int(sel_icustay_id)]['hadm_id'].iloc[0])
+            sel_weight = str(se_cohort[se_cohort['icustay_id'] == int(sel_icustay_id)]['weight'].iloc[0])
+            sel_height = str(se_cohort[se_cohort['icustay_id'] == int(sel_icustay_id)]['height'].iloc[0])
+            sel_bmi = str(np.round(se_cohort[se_cohort['icustay_id'] == int(sel_icustay_id)]['bmi'].iloc[0], 2))
+            sel_start_mv = str(se_cohort[se_cohort['icustay_id'] == int(sel_icustay_id)]['vent_start'].iloc[0])
+            sel_end_mv = str(se_cohort[se_cohort['icustay_id'] == int(sel_icustay_id)]['vent_end'].iloc[0])
+            sel_dur_mv = str(
+                np.round(se_cohort[se_cohort['icustay_id'] == int(sel_icustay_id)]['duration_hours'].iloc[0], 2))
 
-        return render_template('home.html', icustay_ids=icustay_ids, num_se=df_se_cohort_reduced.shape[0],
-                               sel_icustay_id=sel_icustay_id, sel_subject_id=sel_subject_id, sel_adm_id=sel_adm_id,
-                               sel_weight=sel_weight, sel_height=sel_height, sel_bmi=sel_bmi, sel_start_mv=sel_start_mv,
-                               sel_end_mv=sel_end_mv, sel_dur_mv=sel_dur_mv)
+            return render_template('home.html', icustay_ids=icustay_ids, num_se=df_se_cohort_reduced.shape[0],
+                                   sel_icustay_id=sel_icustay_id, sel_subject_id=sel_subject_id, sel_adm_id=sel_adm_id,
+                                   sel_weight=sel_weight, sel_height=sel_height, sel_bmi=sel_bmi, sel_start_mv=sel_start_mv,
+                                   sel_end_mv=sel_end_mv, sel_dur_mv=sel_dur_mv)
+        else:
+            return render_template('home.html', icustay_ids=icustay_ids, num_se=df_se_cohort_reduced.shape[0],
+                                   sel_icustay_id='', sel_subject_id='', sel_adm_id='', sel_weight='', sel_height='',
+                                   sel_bmi='', sel_start_mv='', sel_end_mv='', sel_dur_mv='')
 
 
 @app.route('/about_me')

@@ -76,6 +76,12 @@ bigger-font {
     font-size: 1.2em;
 }
 
+demogr-font {
+    font-size: 1.2em;
+    color: #68A1F0;
+    font-weight: bold;
+}
+
 bold-font {
     font-size: 1em;
     font-weight: bold;
@@ -128,13 +134,13 @@ img {
 
 /* Horizontal line */
 hr {
-  display: block;
-  margin-top: 0.5em;
-  margin-bottom: 0.5em;
-  margin-left: auto;
-  margin-right: auto;
-  border-style: inset;
-  border-width: 1px;
+    display: block;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+    margin-left: auto;
+    margin-right: auto;
+    border-style: inset;
+    border-width: 1px;
 }
 
 option {

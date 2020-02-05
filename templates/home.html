@@ -28,17 +28,17 @@
         <hr>
         {% if sel_icustay_id !=''%}
             <h2>Information about the selected event</h2>
-            ICU Stay ID: <bigger-font>{{ sel_icustay_id }}</bigger-font><p></p>
-            Subject ID: <bigger-font>{{ sel_subject_id }}</bigger-font><p></p>
-            Admission ID: <bigger-font>{{ sel_adm_id }}</bigger-font><p></p>
+            ICU Stay ID: <demogr-font>{{ sel_icustay_id }}</demogr-font><p></p>
+            Subject ID: <demogr-font>{{ sel_subject_id }}</demogr-font><p></p>
+            Admission ID: <demogr-font>{{ sel_adm_id }}</demogr-font><p></p>
 
-            Weight: <bigger-font>{{ sel_weight }} kg</bigger-font><p></p>
-            Height: <bigger-font>{{ sel_height }} cm</bigger-font><p></p>
-            BMI: <bigger-font>{{ sel_bmi }} kg/m^2</bigger-font><p></p>
+            Weight: <demogr-font>{{ sel_weight }} kg</demogr-font><p></p>
+            Height: <demogr-font>{{ sel_height }} cm</demogr-font><p></p>
+            BMI: <demogr-font>{{ sel_bmi }} kg/m^2</demogr-font><p></p>
 
-            Start of Mechanical Ventilation: <bigger-font>{{ sel_start_mv }}</bigger-font><p></p>
-            End of Mechanical Ventilation: <bigger-font>{{ sel_end_mv }}</bigger-font><p></p>
-            Duration of Mechanical Ventilation before Self-extubation: <bigger-font>{{ sel_dur_mv }} hours</bigger-font><p></p>
+            Start of Mechanical Ventilation: <demogr-font>{{ sel_start_mv }}</demogr-font><p></p>
+            End of Mechanical Ventilation: <demogr-font>{{ sel_end_mv }}</demogr-font><p></p>
+            Duration of Mechanical Ventilation before Self-extubation: <demogr-font>{{ sel_dur_mv }} hours</bigger-font><p></p>
 
 
             <form method="GET" action="/plot">
