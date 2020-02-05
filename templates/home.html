@@ -5,10 +5,11 @@
     {% extends "layout.html" %}
     {% block content %}
     <div class="home">
-        <h1>The SeR – Self-extubation Risk</h1>
+        <h1>The SeR App – Self-extubation Risk</h1>
         <p></p>
         <p></p>
-        <bigger-font> MIMIC-III includes {{ num_se }} distinct self-extubation events.</bigger-font>
+        <bigger-font> MIMIC-III includes {{ num_se }} distinct self-extubation events
+            with ICU stay longer than {{ mv_hours }} hours.</bigger-font>
         <p></p>
         <form method="POST" action="/">
             <span> Please select the 'icustay_id' of interest: </span>

@@ -10,7 +10,8 @@ app = Flask(__name__)
 
 df_se_cohort_reduced = get_se_cohort()
 # Final SE cohort with duration of MV > 12 hours
-se_cohort = df_se_cohort_reduced[df_se_cohort_reduced['duration_hours'] >= 12]
+mv_hours = 12
+se_cohort = df_se_cohort_reduced[df_se_cohort_reduced['duration_hours'] >= mv_hours]
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -18,7 +19,7 @@ def home():
     icustay_ids = [str(id) for id in list(se_cohort['icustay_id'])]
 
     if request.method == 'GET':
-        return render_template('home.html', icustay_ids=icustay_ids, num_se=df_se_cohort_reduced.shape[0],
+        return render_template('home.html', icustay_ids=icustay_ids, num_se=se_cohort.shape[0], mv_hours=mv_hours,
                                sel_icustay_id='', sel_subject_id='', sel_adm_id='', sel_weight='', sel_height='',
                                sel_bmi='', sel_start_mv='', sel_end_mv='', sel_dur_mv='')
     else:
@@ -34,7 +35,7 @@ def home():
             sel_dur_mv = str(
                 np.round(se_cohort[se_cohort['icustay_id'] == int(sel_icustay_id)]['duration_hours'].iloc[0], 2))
 
-            return render_template('home.html', icustay_ids=icustay_ids, num_se=df_se_cohort_reduced.shape[0],
+            return render_template('home.html', icustay_ids=icustay_ids, num_se=se_cohort.shape[0], mv_hours=mv_hours,
                                    sel_icustay_id=sel_icustay_id, sel_subject_id=sel_subject_id, sel_adm_id=sel_adm_id,
                                    sel_weight=sel_weight, sel_height=sel_height, sel_bmi=sel_bmi, sel_start_mv=sel_start_mv,
                                    sel_end_mv=sel_end_mv, sel_dur_mv=sel_dur_mv)
