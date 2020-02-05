@@ -141,7 +141,7 @@ def get_se_cohort():
 
 def get_chart_data(subject_id, icustay_id, start_time, end_time, queries_dir='./sql_queries'):
 
-    f = os.path.join(queries_dir, 'vitals.sql')
+    f = os.path.join(queries_dir, 'chart_data.sql')
     with open(f) as fp:
         chart_data_query = ''.join(fp.readlines())
 

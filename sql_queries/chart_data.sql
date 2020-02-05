@@ -16,7 +16,12 @@ SELECT ie.subject_id, ie.icustay_id, ce.charttime
     WHEN itemid = 220739 AND valuenum >= 1 AND valuenum <= 4 THEN 'GCSeye' -- GCS Eye opening
     WHEN itemid = 223900 AND valuenum >= 1 AND valuenum <= 5 THEN 'GCSverbal' -- GCS - Verbal Response
     WHEN itemid = 223901 AND valuenum >= 1 AND valuenum <= 6 THEN 'GCSmotor' -- GCS - Motor Response
-    --TODO: ADD CVP, PAP extraction (PAPSys, PAPDias, PAPMean)
+    WHEN itemid = 778 AND valuenum >= 1 AND valuenum <= 60 THEN 'PaCO2' -- PaCO2
+    WHEN itemid = 779 AND valuenum >= 1 AND valuenum <= 150 THEN 'PaO2' -- PaO2
+    WHEN itemid IN (190,727) AND valuenum >= 0.21 AND valuenum <= 1 THEN 'FiO2' -- FiO2
+    WHEN itemid IN (113,220074) AND valuenum >= 0 AND valuenum <= 30 THEN 'CVP' -- Central Venous Pressure
+    WHEN itemid = 491 AND valuenum >=0 AND valuenum <= 50 THEN 'PAP' -- Pulmonary Arterial Pressure (mean)
+    WHEN itemid IN (492,220059) AND valuenum >=0 AND valuenum <= 50 THEN 'PAPSys' -- Pulmonary Arterial Pressure (systolic)
     ELSE NULL END
   AS vital_sign
 , CASE
@@ -24,6 +29,8 @@ SELECT ie.subject_id, ie.icustay_id, ce.charttime
     WHEN itemid IN (223761,678) THEN (valuenum - 32) / 1.8
     -- convert tidal volume from liters to ml
     WHEN itemid = 3688 THEN valuenum * 1000
+    -- convert FiO2 to percentage
+    WHEN itemid IN (190,727) THEN valuenum * 100
     ELSE valuenum END
   AS valuenum
 , CASE
@@ -33,9 +40,11 @@ SELECT ie.subject_id, ie.icustay_id, ce.charttime
     WHEN itemid IN (456,52,6702,443,220052,220181,225312) THEN 'mmHg' -- MBP
     WHEN itemid IN (615,618,220210,224690,3603) THEN 'bpm' -- RR (bpm)
     WHEN itemid IN (223761,678,223762,676) THEN 'C' -- Temp
-    WHEN itemid IN (646,220277) THEN '%' -- SpO2
+    WHEN itemid IN (646,220277,190,727) THEN '%' -- SpO2, FiO2
     WHEN itemid IN (682,224685,684,3688,224686,224421) THEN 'ml' -- tidal volume
     WHEN itemid IN (535, 224695,506, 220339) THEN 'cmH2O' -- PIP, PEEP
+    WHEN itemid IN (778,779) THEN 'mmHg' -- PaO2, PaCO2
+    WHEN itemid IN (113,220074,491,492,220059) THEN 'mmHg' -- CVP, PAP, PAPSys
     ELSE NULL END
   AS unit
 
@@ -118,5 +127,12 @@ WHERE ce.itemid IN
     223762, -- "Temperature Celsius"
     676,	-- "Temperature C"
     223761, -- "Temperature Fahrenheit"
-    678 --	"Temperature F"
+    678, --	"Temperature F"
+
+    778, -- PaCO2
+    779, -- PaO2
+    190,727, -- FiO2
+    113,220074, -- CVP
+    491, -- PAP mean
+    492,220059 -- PAPSys
 ) AND ie.icustay_id = ICUSTAY_ID

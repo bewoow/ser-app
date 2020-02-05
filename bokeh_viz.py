@@ -19,7 +19,10 @@ CHART_DATA_DETAIL = {'HR': 'Heart Rate', 'SBP': 'Systolic Blood Pressure',\
     'VTspot': 'Spontaneous Tidal Volume', 'PIP': 'Peak Inspiratory Pressure', \
     'PEEP': 'Positive end-expiratory pressure', 'GCStot': 'Glasgow Coma Scale', \
     'GCSeye': 'Glasgow Coma Scale - Eye opening', 'GCSverbal': 'Glasgow Coma Scale - Verbal Response', \
-    'GCSmotor': 'Glasgow Coma Scale - Motor Response'}
+    'GCSmotor': 'Glasgow Coma Scale - Motor Response', 'PaCO2': 'Partial Pressure of Carbon Dioxide', \
+    'PaO2': 'Partial Pressure of Oxygen', 'FiO2': 'Inspired Oxygen Fraction', \
+    'CVP': 'Central Venous Pressure', 'PAP': 'Mean Pulmonary Arterial Pressure', \
+    'PAPSys': 'Systolic Pulmonary Arterial Pressure'}
 
 BACKGROUND_COLOR = '#30404C'
 MAIN_PLOT_COLOR = '#B7C5D3'
