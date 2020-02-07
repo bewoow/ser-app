@@ -20,7 +20,7 @@ from pyathena.util import as_pandas
 import boto3
 from botocore.client import ClientError
 
-from helper_functions import create_table, query_to_dataframe
+from .helper_functions import create_table, query_to_dataframe
 
 # Extract info for AWS connection
 s3 = boto3.resource('s3')
@@ -40,7 +40,7 @@ except ClientError:
 cursor = connect(s3_staging_dir='s3://' + athena_query_results_bucket + '/athena/temp').cursor()
 
 database_name = 'mimiciii'
-sql_queries_dir = './sql_queries'
+sql_queries_dir = './app/sql_queries'
 
 data_dir = './data'
 if not os.path.exists(data_dir):
@@ -139,7 +139,7 @@ def get_se_cohort():
 
     return df_se_cohort_reduced
 
-def get_chart_data(subject_id, icustay_id, start_time, end_time, queries_dir='./sql_queries'):
+def get_chart_data(subject_id, icustay_id, start_time, end_time, queries_dir=sql_queries_dir):
 
     f = os.path.join(queries_dir, 'chart_data.sql')
     with open(f) as fp:
@@ -157,7 +157,7 @@ def get_chart_data(subject_id, icustay_id, start_time, end_time, queries_dir='./
     return query_to_dataframe(cursor, chart_data_query, df_file_name=file_name, data_dir=local_dl_dir)
 
 
-def extract_wfdb_numerics(subject_id, numerics_record_list='', data_dir='./data', channel_names=''):
+def extract_wfdb_numerics(subject_id, numerics_record_list='', data_dir=data_dir, channel_names=''):
     """Download numerics from MIMIC-III Waveform Database Matched Subset and
     generate a Pandas dataframe.
     """
