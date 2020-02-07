@@ -149,6 +149,7 @@ def get_chart_data(subject_id, icustay_id, start_time, end_time, queries_dir='./
     chart_data_query = chart_data_query.replace('STARTTIME', str(start_time))
     chart_data_query = chart_data_query.replace('ENDTIME', str(end_time))
     chart_data_query = chart_data_query.replace('ICUSTAY_ID', str(icustay_id))
+    print(str(start_time), str(end_time))
 
     local_dl_dir = './data/p' + str(subject_id).zfill(6) + '/'
     file_name = 'p' + str(subject_id).zfill(6) + '_icuid' + str(icustay_id).zfill(6) + '_chartdata'

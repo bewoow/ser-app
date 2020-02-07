@@ -17,6 +17,7 @@ se_cohort = df_se_cohort_reduced[df_se_cohort_reduced['duration_hours'] >= mv_ho
 @app.route('/', methods=['GET', 'POST'])
 def home():
     icustay_ids = [str(id) for id in list(se_cohort['icustay_id'])]
+    icustay_ids.sort()
 
     if request.method == 'GET':
         return render_template('home.html', icustay_ids=icustay_ids, num_se=se_cohort.shape[0], mv_hours=mv_hours,
@@ -32,8 +33,7 @@ def home():
             sel_bmi = str(np.round(se_cohort[se_cohort['icustay_id'] == int(sel_icustay_id)]['bmi'].iloc[0], 2))
             sel_start_mv = str(se_cohort[se_cohort['icustay_id'] == int(sel_icustay_id)]['vent_start'].iloc[0])
             sel_end_mv = str(se_cohort[se_cohort['icustay_id'] == int(sel_icustay_id)]['vent_end'].iloc[0])
-            sel_dur_mv = str(
-                np.round(se_cohort[se_cohort['icustay_id'] == int(sel_icustay_id)]['duration_hours'].iloc[0], 2))
+            sel_dur_mv = str(np.round(se_cohort[se_cohort['icustay_id'] == int(sel_icustay_id)]['duration_hours'].iloc[0], 2))
 
             return render_template('home.html', icustay_ids=icustay_ids, num_se=se_cohort.shape[0], mv_hours=mv_hours,
                                    sel_icustay_id=sel_icustay_id, sel_subject_id=sel_subject_id, sel_adm_id=sel_adm_id,
@@ -84,6 +84,7 @@ def get_chart_data_to_plot(sel_icustay_id):
 
     chart_data = get_chart_data(sel_subject_id, sel_icustay_id, sel_start_mv, sel_end_mv)
     vital_signs = list(chart_data['vital_sign'].dropna().unique())
+    vital_signs.sort()
 
     return chart_data, vital_signs
 

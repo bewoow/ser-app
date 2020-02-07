@@ -1,50 +1,61 @@
 SELECT ie.subject_id, ie.icustay_id, ce.charttime
 , CASE
-    WHEN itemid IN (211,220045) AND valuenum > 0 AND valuenum < 300 THEN 'HR' -- Heart Rate
-    WHEN itemid IN (51,442,455,6701,220179,220050,3313,3315,3321) AND valuenum > 0 AND valuenum < 400 THEN 'SBP'-- Sys BP
-    WHEN itemid IN (8368,8440,8441,8555,220180,220051,8502,8503,8506) AND valuenum > 0 AND valuenum < 300 THEN 'DBP' -- DiasBP
-    WHEN itemid IN (456,52,6702,443,220052,220181,225312) AND valuenum > 0 AND valuenum < 300 THEN 'MBP' -- MeanBP
-    WHEN itemid IN (615,618,220210,224690,3603) AND valuenum > 0 AND valuenum < 70 THEN 'RR' -- RespRate
-    WHEN itemid IN (223761,678) AND valuenum > 70 AND valuenum < 120  THEN 'Temp' -- Temp in F, converted to degC IN valuenum call
-    WHEN itemid IN (223762,676) AND valuenum > 10 AND valuenum < 50  THEN 'Temp' -- Temp in C
-    WHEN itemid IN (646,220277) AND valuenum > 25 AND valuenum <= 100 THEN 'SpO2' -- SpO2
-    WHEN itemid IN (682,224685) AND valuenum > 0 AND valuenum <= 8000 THEN 'VTobs' -- Tidal volume observed
-    WHEN itemid IN (684,3688,224686,224421) AND valuenum > 0 and valuenum <= 8000 THEN 'VTspot' -- Tidal volume spot
-    WHEN itemid IN (535, 224695) AND valuenum > 0 AND valuenum <= 80 THEN 'PIP' -- Peak inspiratory pressure
-    WHEN itemid IN (506, 220339) AND valuenum > 0 AND valuenum <= 40 THEN 'PEEP' -- PEEP
-    WHEN itemid = 198 AND valuenum >= 3 AND valuenum <= 15 THEN 'GCStot' -- Glasgow Coma Scale
-    WHEN itemid = 220739 AND valuenum >= 1 AND valuenum <= 4 THEN 'GCSeye' -- GCS Eye opening
-    WHEN itemid = 223900 AND valuenum >= 1 AND valuenum <= 5 THEN 'GCSverbal' -- GCS - Verbal Response
-    WHEN itemid = 223901 AND valuenum >= 1 AND valuenum <= 6 THEN 'GCSmotor' -- GCS - Motor Response
-    WHEN itemid = 778 AND valuenum >= 1 AND valuenum <= 60 THEN 'PaCO2' -- PaCO2
-    WHEN itemid = 779 AND valuenum >= 1 AND valuenum <= 150 THEN 'PaO2' -- PaO2
-    WHEN itemid IN (190,727) AND valuenum >= 0.21 AND valuenum <= 1 THEN 'FiO2' -- FiO2
-    WHEN itemid IN (113,220074) AND valuenum >= 0 AND valuenum <= 30 THEN 'CVP' -- Central Venous Pressure
-    WHEN itemid = 491 AND valuenum >=0 AND valuenum <= 50 THEN 'PAP' -- Pulmonary Arterial Pressure (mean)
-    WHEN itemid IN (492,220059) AND valuenum >=0 AND valuenum <= 50 THEN 'PAPSys' -- Pulmonary Arterial Pressure (systolic)
+    WHEN ce.itemid IN (211,220045) AND ce.valuenum > 0 AND ce.valuenum < 300 THEN 'HR' -- Heart Rate
+    WHEN ce.itemid IN (51,442,455,6701,220179,220050,3313,3315,3321) AND ce.valuenum > 0 AND ce.valuenum < 400 THEN 'SBP'-- Sys BP
+    WHEN ce.itemid IN (8368,8440,8441,8555,220180,220051,8502,8503,8506) AND ce.valuenum > 0 AND ce.valuenum < 300 THEN 'DBP' -- DiasBP
+    WHEN ce.itemid IN (456,52,6702,443,220052,220181,225312) AND ce.valuenum > 0 AND ce.valuenum < 300 THEN 'MBP' -- MeanBP
+    WHEN ce.itemid IN (615,618,220210,224690,3603) AND ce.valuenum > 0 AND ce.valuenum < 70 THEN 'RR' -- RespRate
+    WHEN ce.itemid IN (223761,678) AND ce.valuenum > 70 AND ce.valuenum < 120  THEN 'Temp' -- Temp in F, converted to degC IN ce.valuenum call
+    WHEN ce.itemid IN (223762,676) AND ce.valuenum > 10 AND ce.valuenum < 50  THEN 'Temp' -- Temp in C
+    WHEN ce.itemid IN (646,220277) AND ce.valuenum > 25 AND ce.valuenum <= 100 THEN 'SpO2' -- SpO2
+    WHEN ce.itemid IN (682,224685) AND ce.valuenum > 0 AND ce.valuenum <= 8000 THEN 'VTobs' -- Tidal volume observed
+    WHEN ce.itemid IN (684,3688,224686,224421) AND ce.valuenum > 0 and ce.valuenum <= 8000 THEN 'VTspot' -- Tidal volume spot
+    WHEN ce.itemid IN (535, 224695) AND ce.valuenum > 0 AND ce.valuenum <= 80 THEN 'PIP' -- Peak inspiratory pressure
+    WHEN ce.itemid IN (506, 220339) AND ce.valuenum > 0 AND ce.valuenum <= 40 THEN 'PEEP' -- PEEP
+    WHEN ce.itemid = 198 AND ce.valuenum >= 3 AND ce.valuenum <= 15 THEN 'GCStot' -- Glasgow Coma Scale
+    WHEN ce.itemid = 220739 AND ce.valuenum >= 1 AND ce.valuenum <= 4 THEN 'GCSeye' -- GCS Eye opening
+    WHEN ce.itemid = 223900 AND ce.valuenum >= 1 AND ce.valuenum <= 5 THEN 'GCSverbal' -- GCS - Verbal Response
+    WHEN ce.itemid = 223901 AND ce.valuenum >= 1 AND ce.valuenum <= 6 THEN 'GCSmotor' -- GCS - Motor Response
+    WHEN ce.itemid = 778 AND ce.valuenum >= 1 AND ce.valuenum <= 60 THEN 'PaCO2' -- PaCO2
+    WHEN ce.itemid = 779 AND ce.valuenum >= 1 AND ce.valuenum <= 800 THEN 'PaO2' -- PaO2
+    WHEN ce.itemid IN (190,3420,3422,223835) THEN 'FiO2' -- FiO2
+    WHEN ce.itemid IN (113,220074) AND ce.valuenum >= 0 AND ce.valuenum <= 30 THEN 'CVP' -- Central Venous Pressure
+    WHEN ce.itemid = 491 AND ce.valuenum >=0 AND ce.valuenum <= 50 THEN 'PAP' -- Pulmonary Arterial Pressure (mean)
+    WHEN ce.itemid IN (492,220059) AND ce.valuenum >=0 AND ce.valuenum <= 50 THEN 'PAPSys' -- Pulmonary Arterial Pressure (systolic)
     ELSE NULL END
   AS vital_sign
 , CASE
     -- convert F to C
-    WHEN itemid IN (223761,678) THEN (valuenum - 32) / 1.8
+    WHEN ce.itemid IN (223761,678) THEN (ce.valuenum - 32) / 1.8
     -- convert tidal volume from liters to ml
-    WHEN itemid = 3688 THEN valuenum * 1000
-    -- convert FiO2 to percentage
-    WHEN itemid IN (190,727) THEN valuenum * 100
-    ELSE valuenum END
+    WHEN ce.itemid = 3688 THEN ce.valuenum * 1000
+    -- fix FiO2
+    WHEN ce.itemid = 223835
+        THEN CASE
+            WHEN ce.valuenum > 0 AND ce.valuenum <= 1
+                THEN ce.valuenum * 100
+            -- improperly input data - looks like O2 flow in litres
+            WHEN ce.valuenum > 1 AND ce.valuenum < 21
+                THEN NULL
+            WHEN ce.valuenum >= 21 AND ce.valuenum <= 100
+                then ce.valuenum
+            ELSE NULL END -- unphysiological
+    WHEN ce.itemid IN (3420, 3422) THEN ce.valuenum -- all these values are well formatted
+    WHEN ce.itemid = 190 AND ce.valuenum > 0.20 AND ce.valuenum < 1 THEN ce.valuenum * 100 -- well formatted but not in %
+    ELSE ce.valuenum END
   AS valuenum
 , CASE
-    WHEN itemid IN (211,220045) THEN 'bpm' -- heart rate (bpm)
-    WHEN itemid IN (51,442,455,6701,220179,220050,3313,3315,3321) THEN 'mmHg' -- SBP
-    WHEN itemid IN (8368,8440,8441,8555,220180,220051,8502,8503,8506) THEN 'mmHg' -- DBP
-    WHEN itemid IN (456,52,6702,443,220052,220181,225312) THEN 'mmHg' -- MBP
-    WHEN itemid IN (615,618,220210,224690,3603) THEN 'bpm' -- RR (bpm)
-    WHEN itemid IN (223761,678,223762,676) THEN 'C' -- Temp
-    WHEN itemid IN (646,220277,190,727) THEN '%' -- SpO2, FiO2
-    WHEN itemid IN (682,224685,684,3688,224686,224421) THEN 'ml' -- tidal volume
-    WHEN itemid IN (535, 224695,506, 220339) THEN 'cmH2O' -- PIP, PEEP
-    WHEN itemid IN (778,779) THEN 'mmHg' -- PaO2, PaCO2
-    WHEN itemid IN (113,220074,491,492,220059) THEN 'mmHg' -- CVP, PAP, PAPSys
+    WHEN ce.itemid IN (211,220045) THEN 'bpm' -- heart rate (bpm)
+    WHEN ce.itemid IN (51,442,455,6701,220179,220050,3313,3315,3321) THEN 'mmHg' -- SBP
+    WHEN ce.itemid IN (8368,8440,8441,8555,220180,220051,8502,8503,8506) THEN 'mmHg' -- DBP
+    WHEN ce.itemid IN (456,52,6702,443,220052,220181,225312) THEN 'mmHg' -- MBP
+    WHEN ce.itemid IN (615,618,220210,224690,3603) THEN 'bpm' -- RR (bpm)
+    WHEN ce.itemid IN (223761,678,223762,676) THEN 'C' -- Temp
+    WHEN ce.itemid IN (646,220277,190,727) THEN '%' -- SpO2, FiO2
+    WHEN ce.itemid IN (682,224685,684,3688,224686,224421) THEN 'ml' -- tidal volume
+    WHEN ce.itemid IN (535, 224695,506, 220339) THEN 'cmH2O' -- PIP, PEEP
+    WHEN ce.itemid IN (778,779) THEN 'mmHg' -- PaO2, PaCO2
+    WHEN ce.itemid IN (113,220074,491,492,220059) THEN 'mmHg' -- CVP, PAP, PAPSys
     ELSE NULL END
   AS unit
 
@@ -127,12 +138,23 @@ WHERE ce.itemid IN
     223762, -- "Temperature Celsius"
     676,	-- "Temperature C"
     223761, -- "Temperature Fahrenheit"
-    678, --	"Temperature F"
+    678, --"Temperature F"
 
     778, -- PaCO2
     779, -- PaO2
-    190,727, -- FiO2
+    190,3420,3422,223835, -- FiO2
     113,220074, -- CVP
     491, -- PAP mean
     492,220059 -- PAPSys
 ) AND ie.icustay_id = ICUSTAY_ID
+UNION ALL
+SELECT ie.subject_id, ie.icustay_id, le.charttime
+, CASE WHEN le.itemid = 50821 AND le.valuenum >= 1 AND le.valuenum <= 800 THEN 'PaO2' -- PaO2 (lab events)
+    ELSE NULL END AS vital_sign
+, le.valuenum AS valuenum
+, 'mmHg' AS unit -- PaO2 (lab event) AS
+FROM DATABASE.icustays AS ie
+LEFT JOIN DATABASE.labevents AS le
+ON ie.subject_id = le.subject_id
+AND le.charttime BETWEEN timestamp 'STARTTIME' AND timestamp 'ENDTIME'
+WHERE le.itemid = 50821 AND ie.icustay_id = ICUSTAY_ID;

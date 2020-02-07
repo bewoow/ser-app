@@ -20,7 +20,7 @@ CHART_DATA_DETAIL = {'HR': 'Heart Rate', 'SBP': 'Systolic Blood Pressure',\
     'PEEP': 'Positive end-expiratory pressure', 'GCStot': 'Glasgow Coma Scale', \
     'GCSeye': 'Glasgow Coma Scale - Eye opening', 'GCSverbal': 'Glasgow Coma Scale - Verbal Response', \
     'GCSmotor': 'Glasgow Coma Scale - Motor Response', 'PaCO2': 'Partial Pressure of Carbon Dioxide', \
-    'PaO2': 'Partial Pressure of Oxygen', 'FiO2': 'Inspired Oxygen Fraction', \
+    'PaO2': 'Partial Pressure of Oxygen', 'FiO2': 'Fraction of Inspired Oxygen', \
     'CVP': 'Central Venous Pressure', 'PAP': 'Mean Pulmonary Arterial Pressure', \
     'PAPSys': 'Systolic Pulmonary Arterial Pressure'}
 
