@@ -7,7 +7,7 @@ from pyathena.util import as_pandas
 from datetime import datetime
 
 
-def create_table(cursor, query_file_name, queries_dir='./sql_queries', database_name='mimiciii', del_table=False):
+def create_table(cursor, query_file_name, queries_dir='./app/sql_queries', database_name='mimiciii', del_table=False):
     """Check, create, and optionally delete table in AWS.
     """
     query_file_name = re.sub(r'[.]\w*', '', query_file_name) + '.sql'
