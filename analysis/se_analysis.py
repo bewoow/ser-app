@@ -37,6 +37,8 @@ def impute_values(patient_data):
     Returns:
         patient_data_imputed -- Imputed chart data
     """
+    patient_data = patient_data.dropna(subset=['vital_sign'])
+    
     # Get vital signs available     in patient data.
     vital_signs = patient_data['vital_sign'].unique()
 
@@ -54,10 +56,12 @@ def impute_values(patient_data):
     for vs in vital_signs:
         df = patient_data[patient_data['vital_sign'] == vs]
 
-        # Take the average value of entries with the same charttime
+        # Take the average value of entries with the same charttime. We use the
+        # 'max' for all other entries (e.g., units, etc) so that the aggregated
+        # dataframe includes all entries.
         group_by_agg = {column: 'max' for column in df.columns if column != 'charttime'}
         group_by_agg['valuenum'] = 'mean'
-        df = df.groupby('charttime', as_index=False).agg(group_by_dict)
+        df = df.groupby('charttime', as_index=False).agg(group_by_agg)
 
         # If a charttime from the charttimes of the vital sign with most
         # entries does not exist, create new row in the dataframe
@@ -66,9 +70,16 @@ def impute_values(patient_data):
                 df2 = pd.DataFrame({'charttime': [charttime]})
                 df = df.append(df2, sort=True, ignore_index=True)
 
+        # Apply linear interpolation on the added charttimes. Note that
+        # 'icustay_id', 'subject_id', 'unit', and 'vital_sign' should all the
+        # same. However, 'unit' and 'vital_sign' are categorical data that get
+        # NaN from the interpolation and hence we need to fill them.
         df = df.sort_values(by='charttime').\
-            interpolate(method='linear', limit_direction='forward', axis=0).\
-            fillna(method='pad')
+            interpolate(method='linear', limit_direction='both', axis=0).\
+            fillna(method='ffill').fillna(method='bfill')
+        # Convert 'icustay_id', 'subject_id' back to integer values.
+        df['icustay_id'] = df['icustay_id'].apply(int)
+        df['subject_id'] = df['subject_id'].apply(int)
 
         patient_data_imputed = patient_data_imputed.append(df, sort=True, ignore_index=True)
 
@@ -86,7 +97,8 @@ def compute_total_gcs(patient_data):
     """
     # Get vital signs available in patient data.
     vital_signs = patient_data['vital_sign'].unique()
-
+    
+    # TODO: not all of them may be present at the same charttime.
     # We verify that all the GCS individual components are part of the data.
     if all([gcs_comp in vital_signs for gcs_comp in ('GCSmotor', 'GCSeye', 'GCSverbal')]):
         # Extract individual GCS component scores.
@@ -108,20 +120,82 @@ def compute_total_gcs(patient_data):
     # If total GCS exists in patient data, just return
     return patient_data
 
-# TODO: computer RSBI and Ve
+def compute_rsbi_ve(patient_data):
+    """Compute and append RSBI (rapid shallow breathing index) and VE (minute
+    ventilation) on the 'patient_data' dataframe
+
+    Arguments:
+        patient_data {pd.DataFrame} -- patient data
+
+    Returns:
+        pd.DataFrame -- patient_data
+    """
+    vital_signs = patient_data['vital_sign'].unique()
+    def create_rsbi_ve_dfs(vt_name):
+        """Create dataframes for RSBI and VE based on provided tidal volume
+        name (VTobs, VTspot)
+
+        Arguments:
+            vt_name {string} -- Name of VT dataframe to be used (VTspot, VTobs)
+
+        Returns:
+            pd.DataFrame -- patient_data that includes RSBI and VE
+        """
+        RR = patient_data[patient_data['vital_sign']
+                          == 'RR'].set_index('charttime')
+        VTspot = patient_data[patient_data['vital_sign']
+                          == 'VTspot'].set_index('charttime')
+        VTobs = patient_data[patient_data['vital_sign']
+                         == 'VTobs'].set_index('charttime')
+
+        rsbi = RR.copy()
+        ve = RR.copy()
+
+        # Get appropriate tidal volume (obs or spot)
+        VT = eval(vt_name + "['valuenum'] / 1000")
+
+        rsbi['valuenum'] = RR['valuenum'] / VT
+        rsbi['unit'] = 'bpm/l'
+        rsbi['vital_sign'] = 'RSBI' + vt_name.split('VT')[1]
+
+        ve['valuenum'] = RR['valuenum'] * VT
+        ve['unit'] = 'min/l'
+        ve['vital_sign'] = 'VE' + vt_name.split('VT')[1]
+
+        # Reset indices and append to 'patient_data' dataframe.
+        rsbi = rsbi.reset_index()
+        pat_dat = patient_data.append(rsbi, sort=True, ignore_index=True)
+
+        ve = ve.reset_index()
+        pat_dat = pat_dat.append(ve, sort=True, ignore_index=True)
+
+        return pat_dat
+
+    # Compute and append RSBI and Ve for observed and spontaneous tidal volumes.
+    if 'VTobs' in vital_signs:
+        patient_data = create_rsbi_ve_dfs('VTobs')
+    if 'VTspot' in vital_signs:
+        patient_data = create_rsbi_ve_dfs('VTspot')
+
+    return patient_data
+
 
 df_output = pd.DataFrame()
 seg_timedelta = timedelta(hours=4)
 functions = ['mean', 'median', 'mode', 'kurtosis', 'skew', 'std']
 
-for icustay in list(chart_data.keys())[:1]:
+i_patient = 0
+for icustay in list(chart_data.keys())[:10]:
     patient_data = chart_data[icustay]
-    patient_data = compute_total_gcs(impute_values(patient_data))
+    patient_data = impute_values(patient_data)
+    patient_data = compute_total_gcs(patient_data)
+    patient_data = compute_rsbi_ve(patient_data)
 
     # Extract vital sign
     vital_signs = patient_data['vital_sign'].unique()
     for vital_sign in vital_signs:
-        i = 0
+        i = i_patient
+        label_idx = 1
 
         df = patient_data[patient_data['vital_sign']
                         == vital_sign].sort_values(by='charttime')
@@ -142,19 +216,23 @@ for icustay in list(chart_data.keys())[:1]:
                     df_output.loc[i, '{0}_{1}'.format(vital_sign, func)] = \
                         df.loc[seg_start_idx:seg_end_idx]['valuenum'].apply(func)
 
-            df_output.loc[i, 'label'] = i + 1 # label '1' close to event, increasing as we get further
+            # label '1' close to event, increasing as we get further
+            df_output.loc[i, 'label'] = label_idx
             df_output.loc[i, 'icustay_id'] = int(df['icustay_id'].iloc[0])
 
             seg_end_idx = seg_start_idx
             seg_end_time = df.loc[seg_end_idx, 'charttime']
 
             i += 1
+            label_idx += 1
+    
+    i_patient = i
 
 
-# vs = 'DBP'
+vs = 'RR'
 # print(len(patient_data[patient_data['vital_sign'] == vs]))
 # print(len(patient_data_imp[patient_data_imp['vital_sign'] == vs]))
-# plt.plot(patient_data[patient_data['vital_sign'] == vs]['charttime'],
-#          patient_data[patient_data['vital_sign'] == vs]['valuenum'], '*')
+plt.plot(patient_data[patient_data['vital_sign'] == vs]['charttime'],
+         patient_data[patient_data['vital_sign'] == vs]['valuenum'], '*')
 # plt.plot(patient_data_imp[patient_data_imp['vital_sign'] == vs]['charttime'],
 #          patient_data_imp[patient_data_imp['vital_sign'] == vs]['valuenum'], 'x')
