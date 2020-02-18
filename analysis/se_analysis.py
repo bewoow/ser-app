@@ -42,15 +42,8 @@ def impute_values(patient_data):
     # Get vital signs available in patient data.
     vital_signs = patient_data['vital_sign'].unique()
 
-    # Find the vital sign with the most unique entries.
-    # It will be used as the baseline for imputing data based on that vital
-    # sign's chart time.
-    vs_most_entries = patient_data.groupby("vital_sign").agg(
-        {"charttime": pd.Series.nunique}).idxmax()[0]
-
-    # Extract the charttimes of the vital sign with most entries.
-    charttimes = set(patient_data[patient_data['vital_sign']
-                              == vs_most_entries]['charttime'].sort_values().to_list())
+    # Extract the unique charttimes that will be imputed if not present.
+    charttimes = patient_data['charttime'].unique()
 
     # For all vital signs, check charttimes and interpolate if missing.
     patient_data_imputed = pd.DataFrame(columns=patient_data.columns)
