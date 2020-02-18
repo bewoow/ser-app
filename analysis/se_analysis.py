@@ -38,18 +38,19 @@ def impute_values(patient_data):
         patient_data_imputed -- Imputed chart data
     """
     patient_data = patient_data.dropna(subset=['vital_sign'])
-    
-    # Get vital signs available     in patient data.
+
+    # Get vital signs available in patient data.
     vital_signs = patient_data['vital_sign'].unique()
 
-    # Find the vital sign with the most entries. It will be used as the baseline
-    # for imputing data based on that vital sign's chartted time.
-    vs_most_entries = patient_data.groupby(
-        'vital_sign')['subject_id'].count().idxmax()
+    # Find the vital sign with the most unique entries.
+    # It will be used as the baseline for imputing data based on that vital
+    # sign's chart time.
+    vs_most_entries = patient_data.groupby("vital_sign").agg(
+        {"charttime": pd.Series.nunique}).idxmax()[0]
 
     # Extract the charttimes of the vital sign with most entries.
-    charttimes = patient_data[patient_data['vital_sign']
-                              == vs_most_entries]['charttime'].sort_values().to_list()
+    charttimes = set(patient_data[patient_data['vital_sign']
+                              == vs_most_entries]['charttime'].sort_values().to_list())
 
     # For all vital signs, check charttimes and interpolate if missing.
     patient_data_imputed = pd.DataFrame(columns=patient_data.columns)
@@ -65,10 +66,10 @@ def impute_values(patient_data):
 
         # If a charttime from the charttimes of the vital sign with most
         # entries does not exist, create new row in the dataframe
-        for charttime in charttimes:
-            if not charttime in df['charttime'].to_list():
-                df2 = pd.DataFrame({'charttime': [charttime]})
-                df = df.append(df2, sort=True, ignore_index=True)
+        # for charttime in charttimes:
+        df_2 = pd.DataFrame(columns=patient_data.columns)
+        df_2['charttime'] = list(charttimes)
+        df = df.append(df_2).drop_duplicates(['charttime'])
 
         # Apply linear interpolation on the added charttimes. Note that
         # 'icustay_id', 'subject_id', 'unit', and 'vital_sign' should all the
@@ -97,25 +98,28 @@ def compute_total_gcs(patient_data):
     """
     # Get vital signs available in patient data.
     vital_signs = patient_data['vital_sign'].unique()
-    
-    # TODO: not all of them may be present at the same charttime.
+
     # We verify that all the GCS individual components are part of the data.
     if all([gcs_comp in vital_signs for gcs_comp in ('GCSmotor', 'GCSeye', 'GCSverbal')]):
         # Extract individual GCS component scores.
-        GCSmotor = patient_data[patient_data['vital_sign'] == 'GCSmotor']
-        GCSeye = patient_data[patient_data['vital_sign'] == 'GCSeye']
-        GCSverbal = patient_data[patient_data['vital_sign'] == 'GCSverbal']
+        GCSmotor = patient_data[patient_data['vital_sign'] == 'GCSmotor'].set_index('charttime')
+        GCSeye = patient_data[patient_data['vital_sign'] == 'GCSeye'].set_index('charttime')
+        GCSverbal = patient_data[patient_data['vital_sign']
+                                 == 'GCSverbal'].set_index('charttime')
 
         # Create a new dataframe and update 'vital_sign' and 'valuenum' columns.
-        df_gcs = GCSmotor.copy()
+        df_gcs = pd.DataFrame(columns=GCSmotor.columns)
 
+        df_gcs['valuenum'] = (GCSmotor['valuenum'] + GCSeye['valuenum'] + \
+            GCSverbal['valuenum'])
+        df_gcs = df_gcs.dropna(subset=['valuenum'])
         df_gcs['vital_sign'] = 'GCStot'
         df_gcs['unit'] = None
-        df_gcs['valuenum'] = GCSmotor['valuenum'].values + \
-            GCSeye['valuenum'].values + GCSverbal['valuenum'].values
+        df_gcs['subject_id'] = GCSmotor['subject_id']
+        df_gcs['icustay_id'] = GCSmotor['icustay_id']
 
         # Append to patient_data dataframe.
-        patient_data = patient_data.append(df_gcs, sort=True, ignore_index=True)
+        patient_data = patient_data.append(df_gcs.reset_index(), sort=True, ignore_index=True)
 
     # If total GCS exists in patient data, just return
     return patient_data
@@ -185,7 +189,8 @@ seg_timedelta = timedelta(hours=4)
 functions = ['mean', 'median', 'mode', 'kurtosis', 'skew', 'std']
 
 i_patient = 0
-for icustay in list(chart_data.keys())[:10]:
+for idx, icustay in enumerate(list(chart_data.keys())[:100]):
+    print('Processing ID {0} : {1:d}/{2:d}'.format(icustay+1, idx, len(chart_data.keys())))
     patient_data = chart_data[icustay]
     patient_data = impute_values(patient_data)
     patient_data = compute_total_gcs(patient_data)
@@ -195,8 +200,7 @@ for icustay in list(chart_data.keys())[:10]:
     vital_signs = patient_data['vital_sign'].unique()
     for vital_sign in vital_signs:
         i = i_patient
-        label_idx = 1
-
+        label_idx = 1  # label '1' close to event, increasing as we get further
         df = patient_data[patient_data['vital_sign']
                         == vital_sign].sort_values(by='charttime')
 
@@ -216,7 +220,6 @@ for icustay in list(chart_data.keys())[:10]:
                     df_output.loc[i, '{0}_{1}'.format(vital_sign, func)] = \
                         df.loc[seg_start_idx:seg_end_idx]['valuenum'].apply(func)
 
-            # label '1' close to event, increasing as we get further
             df_output.loc[i, 'label'] = label_idx
             df_output.loc[i, 'icustay_id'] = int(df['icustay_id'].iloc[0])
 
@@ -225,14 +228,16 @@ for icustay in list(chart_data.keys())[:10]:
 
             i += 1
             label_idx += 1
-    
+
     i_patient = i
 
 
 vs = 'RR'
+for vs in patient_data['vital_sign'].unique()[:5]:
 # print(len(patient_data[patient_data['vital_sign'] == vs]))
 # print(len(patient_data_imp[patient_data_imp['vital_sign'] == vs]))
-plt.plot(patient_data[patient_data['vital_sign'] == vs]['charttime'],
-         patient_data[patient_data['vital_sign'] == vs]['valuenum'], '*')
+    plt.plot(patient_data[patient_data['vital_sign'] == vs]['charttime'],
+            patient_data[patient_data['vital_sign'] == vs]['valuenum'], '*')
+plt.legend(patient_data['vital_sign'].unique()[:5])
 # plt.plot(patient_data_imp[patient_data_imp['vital_sign'] == vs]['charttime'],
 #          patient_data_imp[patient_data_imp['vital_sign'] == vs]['valuenum'], 'x')
