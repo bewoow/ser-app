@@ -1,11 +1,15 @@
-import os # TODO: Change to install modules
+import os  # TODO: Change to install modules
+from scipy.interpolate import interp1d
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+from functools import lru_cache
+from datetime import datetime, timedelta
 
 os.chdir('../app/')
 from lib import get_se_cohort, get_chart_data, create_bokeh_viz
 os.chdir('../')
-
-import numpy as np
-from functools import lru_cache
 
 df_se_cohort_reduced = get_se_cohort()
 # Final SE cohort with duration of MV > 12 hours
@@ -18,15 +22,6 @@ for icustay_id in se_cohort['icustay_id'].values:
     mv_end_time = se_cohort[se_cohort.icustay_id == icustay_id]['vent_end'].iloc[0]
     subject_id = se_cohort[se_cohort.icustay_id == icustay_id]['subject_id'].iloc[0]
     chart_data[icustay_id] = get_chart_data(subject_id, icustay_id, mv_start_time, mv_end_time)
-
-
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-from datetime import datetime, timedelta
-import pandas as pd
-from scipy.interpolate import interp1d
-
 
 def impute_values(patient_data):
     """Impute chart daata
@@ -177,60 +172,53 @@ def compute_rsbi_ve(patient_data):
     return patient_data
 
 
-df_output = pd.DataFrame()
-seg_timedelta = timedelta(hours=4)
-functions = ['mean', 'median', 'mode', 'kurtosis', 'skew', 'std']
+se_analysis_file = './data/se_analysis.h5'
+if os.path.exists(se_analysis_file):
+    df_se_analysis = pd.read_hdf(se_analysis_file)
+else:
+    df_se_analysis = pd.DataFrame()
+    seg_nptimedelta = np.timedelta64(4, 'h')
+    functions = ['mean', 'median', 'mode', 'kurtosis', 'skew', 'std']
 
-i_patient = 0
-for idx, icustay in enumerate(list(chart_data.keys())[:100]):
-    print('Processing ID {0} : {1:d}/{2:d}'.format(icustay+1, idx, len(chart_data.keys())))
-    patient_data = chart_data[icustay]
-    patient_data = impute_values(patient_data)
-    patient_data = compute_total_gcs(patient_data)
-    patient_data = compute_rsbi_ve(patient_data)
+    i = 0
+    for idx, icustay in enumerate(list(chart_data.keys())):
+        print('Processing ID {0} : {1:d}/{2:d}'.format(icustay, idx+1, len(chart_data.keys())))
+        # Get chart data for each icustay, impute values, and compute GCS, RSBI, and VE
+        patient_data = chart_data[icustay]
+        patient_data = impute_values(patient_data)
+        patient_data = compute_total_gcs(patient_data)
+        patient_data = compute_rsbi_ve(patient_data)
 
-    # Extract vital sign
-    vital_signs = patient_data['vital_sign'].unique()
-    for vital_sign in vital_signs:
-        i = i_patient
-        label_idx = 1  # label '1' close to event, increasing as we get further
-        df = patient_data[patient_data['vital_sign']
-                        == vital_sign].sort_values(by='charttime')
+        # Extract vital sign
+        vital_signs = patient_data['vital_sign'].unique()
 
-        seg_end_idx = df.index.values[len(df) - 1]
-        seg_end_time = df.loc[seg_end_idx, 'charttime']
+        label_idx = 0  # label '1' close to event, increasing as we get further
 
-        while seg_end_time > df.iloc[0]['charttime']:
-            seg_start_time = seg_end_time - seg_timedelta
-            seg_start_idx = df['charttime'].apply(
-                lambda x: abs(x - seg_start_time)).idxmin()
+        sorted_charttimes = sorted(patient_data['charttime'].unique())
 
-            for func in functions:
-                if func == 'mode':
-                    df_output.loc[i, '{0}_{1}'.format(vital_sign, func)] = \
-                        df.loc[seg_start_idx:seg_end_idx]['valuenum'].apply(func)[0]
-                else:
-                    df_output.loc[i, '{0}_{1}'.format(vital_sign, func)] = \
-                        df.loc[seg_start_idx:seg_end_idx]['valuenum'].apply(func)
-
-            df_output.loc[i, 'label'] = label_idx
-            df_output.loc[i, 'icustay_id'] = int(df['icustay_id'].iloc[0])
-
-            seg_end_idx = seg_start_idx
-            seg_end_time = df.loc[seg_end_idx, 'charttime']
-
-            i += 1
+        seg_end_time = sorted_charttimes[-1]
+        while seg_end_time > sorted_charttimes[0]:
+            seg_start_time = seg_end_time - seg_nptimedelta
             label_idx += 1
 
-    i_patient = i
+            for vital_sign in vital_signs:
+                df = patient_data[patient_data['vital_sign'] \
+                    == vital_sign].sort_values(by='charttime').set_index('charttime')
 
+                df_se_analysis.loc[i, 'label'] = label_idx
+                df_se_analysis.loc[i, 'icustay_id'] = int(df['icustay_id'].iloc[0])
+                for func in functions:
+                    if func == 'mode':
+                        df_se_analysis.loc[i, '{0}_{1}'.format(vital_sign, func)] = \
+                            df.loc[seg_start_time:seg_end_time]['valuenum'].apply(func)[
+                            0]
+                    else:
+                        df_se_analysis.loc[i, '{0}_{1}'.format(vital_sign, func)] = \
+                            df.loc[seg_start_time:seg_end_time]['valuenum'].apply(
+                                func)
 
-vs = 'RR'
-for vs in patient_data['vital_sign'].unique()[:5]:
-# print(len(patient_data[patient_data['vital_sign'] == vs]))
-# print(len(patient_data_imp[patient_data_imp['vital_sign'] == vs]))
-    plt.plot(patient_data[patient_data['vital_sign'] == vs]['charttime'],
-            patient_data[patient_data['vital_sign'] == vs]['valuenum'], '*')
-plt.legend(patient_data['vital_sign'].unique()[:5])
-# plt.plot(patient_data_imp[patient_data_imp['vital_sign'] == vs]['charttime'],
-#          patient_data_imp[patient_data_imp['vital_sign'] == vs]['valuenum'], 'x')
+            seg_end_time = seg_start_time
+            i += 1
+
+    df_se_analysis['label'] = df_se_analysis['label'].apply(int)
+    df_se_analysis['icustay_id'] = df_se_analysis['icustay_id'].apply(int)
