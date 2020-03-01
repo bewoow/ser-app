@@ -1,4 +1,5 @@
 import os  # TODO: Change to install modules
+import sys
 from scipy.interpolate import interp1d
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -6,6 +7,8 @@ import seaborn as sns
 import numpy as np
 from functools import lru_cache
 from datetime import datetime, timedelta
+
+# sys.path.append(os.path.abspath('../app'))
 
 os.chdir('../app/')
 from lib import get_se_cohort, get_chart_data, create_bokeh_viz
@@ -172,13 +175,15 @@ def compute_rsbi_ve(patient_data):
     return patient_data
 
 
-se_analysis_file = './data/se_analysis.h5'
+seg_size_hours = 4
+seg_nptimedelta = np.timedelta64(seg_size_hours, 'h')
+functions = ['mean', 'median', 'mode', 'kurtosis', 'skew', 'std']
+
+se_analysis_file = './data/se_analysis_{0}hours.h5'.format(seg_size_hours)
 if os.path.exists(se_analysis_file):
     df_se_analysis = pd.read_hdf(se_analysis_file)
 else:
     df_se_analysis = pd.DataFrame()
-    seg_nptimedelta = np.timedelta64(4, 'h')
-    functions = ['mean', 'median', 'mode', 'kurtosis', 'skew', 'std']
 
     i = 0
     for idx, icustay in enumerate(list(chart_data.keys())):
@@ -203,18 +208,23 @@ else:
 
             for vital_sign in vital_signs:
                 df = patient_data[patient_data['vital_sign'] \
-                    == vital_sign].sort_values(by='charttime').set_index('charttime')
+                    == vital_sign].sort_values(by='charttime')
+
+                seg_start_idx = df['charttime'].apply(
+                    lambda x: abs(x - seg_start_time)).idxmin()
+                seg_end_idx = df['charttime'].apply(
+                    lambda x: abs(x - seg_end_time)).idxmin()
 
                 df_se_analysis.loc[i, 'label'] = label_idx
                 df_se_analysis.loc[i, 'icustay_id'] = int(df['icustay_id'].iloc[0])
                 for func in functions:
                     if func == 'mode':
                         df_se_analysis.loc[i, '{0}_{1}'.format(vital_sign, func)] = \
-                            df.loc[seg_start_time:seg_end_time]['valuenum'].apply(func)[
+                            df.loc[seg_start_idx:seg_end_idx]['valuenum'].apply(func)[
                             0]
                     else:
                         df_se_analysis.loc[i, '{0}_{1}'.format(vital_sign, func)] = \
-                            df.loc[seg_start_time:seg_end_time]['valuenum'].apply(
+                            df.loc[seg_start_idx:seg_end_idx]['valuenum'].apply(
                                 func)
 
             seg_end_time = seg_start_time
@@ -222,3 +232,5 @@ else:
 
     df_se_analysis['label'] = df_se_analysis['label'].apply(int)
     df_se_analysis['icustay_id'] = df_se_analysis['icustay_id'].apply(int)
+
+    df_se_analysis.to_hdf(se_analysis_file, 's')
