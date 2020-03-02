@@ -175,7 +175,7 @@ def compute_rsbi_ve(patient_data):
     return patient_data
 
 
-seg_size_hours = 4
+seg_size_hours = 3
 seg_nptimedelta = np.timedelta64(seg_size_hours, 'h')
 functions = ['mean', 'median', 'mode', 'kurtosis', 'skew', 'std']
 
@@ -234,3 +234,41 @@ else:
     df_se_analysis['icustay_id'] = df_se_analysis['icustay_id'].apply(int)
 
     df_se_analysis.to_hdf(se_analysis_file, 's')
+
+# We use only a portion of the dataset (few entries/patients longer than say 24hours )
+# Each group 3 or 4 hours
+# TODO: make the grouping adjustable
+
+# group by label to find how many data we have per label
+label_groups = df_se_analysis.groupby('label')
+
+# compute mean values for each data and each group -> to be used for imputation
+df_se_data_mean = pd.DataFrame({i: label_groups.get_group(i).mean(skipna=True) for i in label_groups.groups.keys()})
+df_se_data_mean = df_se_data_mean.drop('icustay_id', axis=0)
+
+df_se_data = pd.concat([df_se_analysis.loc[group_idx]
+                        for i, group_idx in label_groups.groups.items() if i <= 8])  # for 3-hour seg (8*3 =24)
+
+# impute nan values
+
+vt_count_group = label_groups.count()
+max_entries_group = vt_count_group['icustay_id'].max()
+for vt in vt_count_group.columns:
+    if all(vt_count_group[vt] < max_entries_group * 2 / 3):
+        df_se_data = df_se_data.drop([vt], axis=1)
+
+
+X = df_se_data.drop(['label', 'icustay_id'], axis=1)
+y = df_se_data['label']
+
+from sklearn.model_selection import train_test_split
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.experimental import enable_iterative_imputer
+from sklearn.impute import (
+    SimpleImputer, KNNImputer, IterativeImputer, MissingIndicator)
+
+rf = RandomForestClassifier()
+rf.fit(X, y)
