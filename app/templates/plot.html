@@ -16,6 +16,8 @@
     <div class="plot">
         Hello ..{{ sel_icustay_id }}..
         <p></p>
+        {{ script_ser|safe }}
+        {{ div_ser|safe }}
         <p></p>
         <form method="POST">
             <span> Select vital sign to plot:</span>
