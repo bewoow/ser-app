@@ -12,42 +12,30 @@ import joblib
 # sys.path.append(os.path.abspath('../app'))
 
 os.chdir('../app/')
-from lib import get_se_cohort, get_chart_data, create_bokeh_viz
+from lib import get_se_cohort, get_chart_data, create_bokeh_viz_chartdata
 os.chdir('../')
 
-df_se_cohort_reduced = get_se_cohort()
-# Final SE cohort with duration of MV > 12 hours
-mv_hours = 12
-se_cohort = df_se_cohort_reduced[df_se_cohort_reduced['duration_hours'] >= mv_hours]
-
-chart_data = dict()
-for icustay_id in se_cohort['icustay_id'].values:
-    mv_start_time = se_cohort[se_cohort.icustay_id == icustay_id]['vent_start'].iloc[0]
-    mv_end_time = se_cohort[se_cohort.icustay_id == icustay_id]['vent_end'].iloc[0]
-    subject_id = se_cohort[se_cohort.icustay_id == icustay_id]['subject_id'].iloc[0]
-    chart_data[icustay_id] = get_chart_data(subject_id, icustay_id, mv_start_time, mv_end_time)
-
-def impute_values(patient_data):
+def impute_values(chart_data):
     """Impute chart daata
 
     Arguments:
-        patient_data {patient_data} -- [description]
+        chart_data {chart_data} -- [description]
 
     Returns:
-        patient_data_imputed -- Imputed chart data
+        chart_data_imputed -- Imputed chart data
     """
-    patient_data = patient_data.dropna(subset=['vital_sign'])
+    chart_data = chart_data.dropna(subset=['vital_sign'])
 
     # Get vital signs available in patient data.
-    vital_signs = patient_data['vital_sign'].unique()
+    vital_signs = chart_data['vital_sign'].unique()
 
     # Extract the unique charttimes that will be imputed if not present.
-    charttimes = patient_data['charttime'].unique()
+    charttimes = chart_data['charttime'].unique()
 
     # For all vital signs, check charttimes and interpolate if missing.
-    patient_data_imputed = pd.DataFrame(columns=patient_data.columns)
+    chart_data_imputed = pd.DataFrame(columns=chart_data.columns)
     for vs in vital_signs:
-        df = patient_data[patient_data['vital_sign'] == vs]
+        df = chart_data[chart_data['vital_sign'] == vs]
 
         # Take the average value of entries with the same charttime. We use the
         # 'max' for all other entries (e.g., units, etc) so that the aggregated
@@ -59,7 +47,7 @@ def impute_values(patient_data):
         # If a charttime from the charttimes of the vital sign with most
         # entries does not exist, create new row in the dataframe
         # for charttime in charttimes:
-        df_2 = pd.DataFrame(columns=patient_data.columns)
+        df_2 = pd.DataFrame(columns=chart_data.columns)
         df_2['charttime'] = list(charttimes)
         df = df.append(df_2).drop_duplicates(['charttime'])
 
@@ -74,29 +62,29 @@ def impute_values(patient_data):
         df['icustay_id'] = df['icustay_id'].apply(int)
         df['subject_id'] = df['subject_id'].apply(int)
 
-        patient_data_imputed = patient_data_imputed.append(df, sort=True, ignore_index=True)
+        chart_data_imputed = chart_data_imputed.append(df, sort=True, ignore_index=True)
 
-    return patient_data_imputed.dropna(subset=['icustay_id'])
+    return chart_data_imputed.dropna(subset=['icustay_id'])
 
-def compute_total_gcs(patient_data):
+def compute_total_gcs(chart_data):
     """Computes the total Glasgow Coma Scale (GCS) score as the sum of the
     individual components (eye, motor, verbal).
 
     Arguments:
-        patient_data {pd.DataFrame} -- Patient data in a Pandas dataframe.
+        chart_data {pd.DataFrame} -- Patient data in a Pandas dataframe.
 
     Returns:
         pd.DataFrame -- Patient data dataframe with total GCS (GCStot) included.
     """
     # Get vital signs available in patient data.
-    vital_signs = patient_data['vital_sign'].unique()
+    vital_signs = chart_data['vital_sign'].unique()
 
     # We verify that all the GCS individual components are part of the data.
     if all([gcs_comp in vital_signs for gcs_comp in ('GCSmotor', 'GCSeye', 'GCSverbal')]):
         # Extract individual GCS component scores.
-        GCSmotor = patient_data[patient_data['vital_sign'] == 'GCSmotor'].set_index('charttime')
-        GCSeye = patient_data[patient_data['vital_sign'] == 'GCSeye'].set_index('charttime')
-        GCSverbal = patient_data[patient_data['vital_sign']
+        GCSmotor = chart_data[chart_data['vital_sign'] == 'GCSmotor'].set_index('charttime')
+        GCSeye = chart_data[chart_data['vital_sign'] == 'GCSeye'].set_index('charttime')
+        GCSverbal = chart_data[chart_data['vital_sign']
                                  == 'GCSverbal'].set_index('charttime')
 
         # Create a new dataframe and update 'vital_sign' and 'valuenum' columns.
@@ -110,23 +98,23 @@ def compute_total_gcs(patient_data):
         df_gcs['subject_id'] = GCSmotor['subject_id']
         df_gcs['icustay_id'] = GCSmotor['icustay_id']
 
-        # Append to patient_data dataframe.
-        patient_data = patient_data.append(df_gcs.reset_index(), sort=True, ignore_index=True)
+        # Append to chart_data dataframe.
+        chart_data = chart_data.append(df_gcs.reset_index(), sort=True, ignore_index=True)
 
     # If total GCS exists in patient data, just return
-    return patient_data
+    return chart_data
 
-def compute_rsbi_ve(patient_data):
+def compute_rsbi_ve(chart_data):
     """Compute and append RSBI (rapid shallow breathing index) and VE (minute
-    ventilation) on the 'patient_data' dataframe
+    ventilation) on the 'chart_data' dataframe
 
     Arguments:
-        patient_data {pd.DataFrame} -- patient data
+        chart_data {pd.DataFrame} -- patient data
 
     Returns:
-        pd.DataFrame -- patient_data
+        pd.DataFrame -- chart_data
     """
-    vital_signs = patient_data['vital_sign'].unique()
+    vital_signs = chart_data['vital_sign'].unique()
     def create_rsbi_ve_dfs(vt_name):
         """Create dataframes for RSBI and VE based on provided tidal volume
         name (VTobs, VTspot)
@@ -135,13 +123,13 @@ def compute_rsbi_ve(patient_data):
             vt_name {string} -- Name of VT dataframe to be used (VTspot, VTobs)
 
         Returns:
-            pd.DataFrame -- patient_data that includes RSBI and VE
+            pd.DataFrame -- chart_data that includes RSBI and VE
         """
-        RR = patient_data[patient_data['vital_sign']
+        RR = chart_data[chart_data['vital_sign']
                           == 'RR'].set_index('charttime')
-        VTspot = patient_data[patient_data['vital_sign']
+        VTspot = chart_data[chart_data['vital_sign']
                           == 'VTspot'].set_index('charttime')
-        VTobs = patient_data[patient_data['vital_sign']
+        VTobs = chart_data[chart_data['vital_sign']
                          == 'VTobs'].set_index('charttime')
 
         rsbi = RR.copy()
@@ -158,9 +146,9 @@ def compute_rsbi_ve(patient_data):
         ve['unit'] = 'min/l'
         ve['vital_sign'] = 'VE' + vt_name.split('VT')[1]
 
-        # Reset indices and append to 'patient_data' dataframe.
+        # Reset indices and append to 'chart_data' dataframe.
         rsbi = rsbi.reset_index()
-        pat_dat = patient_data.append(rsbi, sort=True, ignore_index=True)
+        pat_dat = chart_data.append(rsbi, sort=True, ignore_index=True)
 
         ve = ve.reset_index()
         pat_dat = pat_dat.append(ve, sort=True, ignore_index=True)
@@ -169,16 +157,30 @@ def compute_rsbi_ve(patient_data):
 
     # Compute and append RSBI and Ve for observed and spontaneous tidal volumes.
     if 'VTobs' in vital_signs:
-        patient_data = create_rsbi_ve_dfs('VTobs')
+        chart_data = create_rsbi_ve_dfs('VTobs')
     if 'VTspot' in vital_signs:
-        patient_data = create_rsbi_ve_dfs('VTspot')
+        chart_data = create_rsbi_ve_dfs('VTspot')
 
-    return patient_data
+    return chart_data
 
 
 # %%
-# Select icustay
-icustay = list(chart_data.keys())[1]
+df_se_cohort_reduced = get_se_cohort()
+# Final SE cohort with duration of MV > 12 hours
+mv_hours = 12
+se_cohort = df_se_cohort_reduced[df_se_cohort_reduced['duration_hours'] >= mv_hours]
+
+# Select chartdata from single icustay_id
+icustay_id = se_cohort['icustay_id'].values[0]
+mv_start_time = se_cohort[se_cohort.icustay_id ==
+                          icustay_id]['vent_start'].iloc[0]
+mv_end_time = se_cohort[se_cohort.icustay_id == icustay_id]['vent_end'].iloc[0]
+subject_id = se_cohort[se_cohort.icustay_id ==
+                       icustay_id]['subject_id'].iloc[0]
+
+chart_data = get_chart_data(
+    subject_id, icustay_id, mv_start_time, mv_end_time)
+
 
 seg_size_hours = 3
 seg_nptimedelta = np.timedelta64(seg_size_hours, 'h')
@@ -189,19 +191,18 @@ df_se_analysis = pd.DataFrame()
 
 i = 0
 # Get chart data for each icustay, impute values, and compute GCS, RSBI, and VE
-patient_data = chart_data[icustay]
-patient_data = impute_values(patient_data)
-patient_data = compute_total_gcs(patient_data)
-patient_data = compute_rsbi_ve(patient_data)
+chart_data = impute_values(chart_data)
+chart_data = compute_total_gcs(chart_data)
+chart_data = compute_rsbi_ve(chart_data)
 
 # Extract vital sign
-vital_signs = patient_data['vital_sign'].unique()
+vital_signs = chart_data['vital_sign'].unique()
 
 label_idx = 0  # label '1' close to event, increasing as we get further
 
 # We find the unique charttimes and sort them so that we start from the
 # last (when self extubation occurs) and when go back segment-by-segment
-sorted_charttimes = sorted(patient_data['charttime'].unique())
+sorted_charttimes = sorted(chart_data['charttime'].unique())
 
 seg_end_time = sorted_charttimes[-1]
 while seg_end_time > sorted_charttimes[0]:
@@ -212,7 +213,7 @@ while seg_end_time > sorted_charttimes[0]:
     # and compute the different functions (e.g., mean, variance) which
     # will consist our feature vector
     for vital_sign in vital_signs:
-        df = patient_data[patient_data['vital_sign'] \
+        df = chart_data[chart_data['vital_sign'] \
             == vital_sign].sort_values(by='charttime')
 
         seg_start_idx = df['charttime'].apply(
