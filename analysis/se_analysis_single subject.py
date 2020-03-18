@@ -7,6 +7,7 @@ import seaborn as sns
 import numpy as np
 from functools import lru_cache
 from datetime import datetime, timedelta
+import joblib
 
 # sys.path.append(os.path.abspath('../app'))
 
@@ -175,132 +176,104 @@ def compute_rsbi_ve(patient_data):
     return patient_data
 
 
+# %%
+# Select icustay
+icustay = list(chart_data.keys())[1]
+
 seg_size_hours = 3
 seg_nptimedelta = np.timedelta64(seg_size_hours, 'h')
 # Functions that will be evaluated for each segment to get the feature vector.
 functions = ['mean', 'median', 'mode', 'kurtosis', 'skew', 'std']
 
-se_analysis_file = './data/se_analysis_{0}hours.h5'.format(seg_size_hours)
-if os.path.exists(se_analysis_file):
-    df_se_analysis = pd.read_hdf(se_analysis_file)
-else:
-    df_se_analysis = pd.DataFrame()
+df_se_analysis = pd.DataFrame()
 
-    i = 0
-    for idx, icustay in enumerate(list(chart_data.keys())):
-        print('Processing ID {0} : {1:d}/{2:d}'.format(icustay, idx+1, len(chart_data.keys())))
-        # Get chart data for each icustay, impute values, and compute GCS, RSBI, and VE
-        patient_data = chart_data[icustay]
-        patient_data = impute_values(patient_data)
-        patient_data = compute_total_gcs(patient_data)
-        patient_data = compute_rsbi_ve(patient_data)
+i = 0
+# Get chart data for each icustay, impute values, and compute GCS, RSBI, and VE
+patient_data = chart_data[icustay]
+patient_data = impute_values(patient_data)
+patient_data = compute_total_gcs(patient_data)
+patient_data = compute_rsbi_ve(patient_data)
 
-        # Extract vital sign
-        vital_signs = patient_data['vital_sign'].unique()
+# Extract vital sign
+vital_signs = patient_data['vital_sign'].unique()
 
-        label_idx = 0  # label '1' close to event, increasing as we get further
+label_idx = 0  # label '1' close to event, increasing as we get further
 
-        # We find the unique charttimes and sort them so that we start from the
-        # last (when self extubation occurs) and when go back segment-by-segment
-        sorted_charttimes = sorted(patient_data['charttime'].unique())
+# We find the unique charttimes and sort them so that we start from the
+# last (when self extubation occurs) and when go back segment-by-segment
+sorted_charttimes = sorted(patient_data['charttime'].unique())
 
-        seg_end_time = sorted_charttimes[-1]
-        while seg_end_time > sorted_charttimes[0]:
-            seg_start_time = seg_end_time - seg_nptimedelta
-            label_idx += 1  # label '1' close to event, increasing as we get further
+seg_end_time = sorted_charttimes[-1]
+while seg_end_time > sorted_charttimes[0]:
+    seg_start_time = seg_end_time - seg_nptimedelta
+    label_idx += 1  # label '1' close to event, increasing as we get further
 
-            # For every vital sign, we extract the data within each segment
-            # and compute the different functions (e.g., mean, variance) which
-            # will consist our feature vector
-            for vital_sign in vital_signs:
-                df = patient_data[patient_data['vital_sign'] \
-                    == vital_sign].sort_values(by='charttime')
+    # For every vital sign, we extract the data within each segment
+    # and compute the different functions (e.g., mean, variance) which
+    # will consist our feature vector
+    for vital_sign in vital_signs:
+        df = patient_data[patient_data['vital_sign'] \
+            == vital_sign].sort_values(by='charttime')
 
-                seg_start_idx = df['charttime'].apply(
-                    lambda x: abs(x - seg_start_time)).idxmin()
-                seg_end_idx = df['charttime'].apply(
-                    lambda x: abs(x - seg_end_time)).idxmin()
+        seg_start_idx = df['charttime'].apply(
+            lambda x: abs(x - seg_start_time)).idxmin()
+        seg_end_idx = df['charttime'].apply(
+            lambda x: abs(x - seg_end_time)).idxmin()
 
-                df_se_analysis.loc[i, 'label'] = label_idx
-                df_se_analysis.loc[i, 'icustay_id'] = int(df['icustay_id'].iloc[0])
-                for func in functions:
-                    if func == 'mode':
-                        df_se_analysis.loc[i, '{0}_{1}'.format(vital_sign, func)] = \
-                            df.loc[seg_start_idx:seg_end_idx]['valuenum'].apply(func)[
-                            0]
-                    else:
-                        df_se_analysis.loc[i, '{0}_{1}'.format(vital_sign, func)] = \
-                            df.loc[seg_start_idx:seg_end_idx]['valuenum'].apply(
-                                func)
+        df_se_analysis.loc[i, 'label'] = label_idx
+        df_se_analysis.loc[i, 'icustay_id'] = int(df['icustay_id'].iloc[0])
+        for func in functions:
+            if func == 'mode':
+                df_se_analysis.loc[i, '{0}_{1}'.format(vital_sign, func)] = \
+                    df.loc[seg_start_idx:seg_end_idx]['valuenum'].apply(func)[
+                    0]
+            else:
+                df_se_analysis.loc[i, '{0}_{1}'.format(vital_sign, func)] = \
+                    df.loc[seg_start_idx:seg_end_idx]['valuenum'].apply(
+                        func)
 
-            seg_end_time = seg_start_time
-            i += 1
+    seg_end_time = seg_start_time
+    i += 1
 
-    df_se_analysis['label'] = df_se_analysis['label'].apply(int)
-    df_se_analysis['icustay_id'] = df_se_analysis['icustay_id'].apply(int)
+df_se_analysis['label'] = df_se_analysis['label'].apply(int)
+df_se_analysis['icustay_id'] = df_se_analysis['icustay_id'].apply(int)
 
-    df_se_analysis.to_hdf(se_analysis_file, 's')
-
-# We use only a portion of the dataset (few entries/patients longer than say 24hours )
-# Each segment 3 or 4 hours
-# TODO: make the segments adjustable
+# %%
+df_se_data_population_mean = pd.read_hdf(
+    './data/pop_mean_seg-size-hours{0}.h5'.format(seg_size_hours))
 
 # Group by label/segment to find how many data we have per label
 segment_groups = df_se_analysis.groupby('label')
 
-# Compute mean values for each data and each group -> to be used for imputation
-df_se_data_mean = pd.DataFrame({i: segment_groups.get_group(i).mean(skipna=True) \
-    for i in segment_groups.groups.keys()})
-df_se_data_mean = df_se_data_mean.drop('icustay_id', axis=0)
-
-# Extract only a few number of segments closer to the senf-extubation event
-# For example, if we use data for 24 hours prior to the event, which are binned
-# in 3-hour segments, we need segements with labels 1 through 8
-#
-#  -> this can be justified because the risk 24 hours prior to the event is
-# most possibly meaningless and MAINLY because we have fewer patients with
-# longer ICU stays
-# TODO: run statistics of number of patients with longer than e.g. 24 hours
-total_num_hours = 24
+total_num_hours = 12
 num_segments = total_num_hours // seg_size_hours
 df_se_data_trun = pd.concat([df_se_analysis.loc[group_idx]
-                        for i, group_idx in segment_groups.groups.items() if i <= num_segments])  # for 3-hour seg (8*3 =24)
+                             for i, group_idx in segment_groups.groups.items() if i <= num_segments])
+
+# Use only the features in the training dataset
+columns_to_keep = ['label', 'icustay_id']
+columns_to_keep.extend(list(df_se_data_population_mean.index.values))
+df_se_data_trun = df_se_data_trun[columns_to_keep]
 
 # Remove features that do not have a lot of entries (i.e., NaNs) for each segment.
 segment_groups_trun = df_se_data_trun.groupby('label')
 
 feature_count_seg = segment_groups_trun.count()
-max_entries_seg = feature_count_seg['icustay_id'] # ICU stay is always not a NaN for each segment
+
 for feat in feature_count_seg.columns:
-    # Each feature should have at least 2/3 of the max entries per segment
-    if all(feature_count_seg[feat] < max_entries_seg * 2 / 3):
-        df_se_data_trun = df_se_data_trun.drop([feat], axis=1)
-    elif feat != 'icustay_id':
+    if feat != 'icustay_id':
         # Impute nan feature values with their averages
         for label, label_idx in segment_groups_trun.groups.items():
-            df_se_data_trun.loc[label_idx, feat] = df_se_data_trun.loc[label_idx, feat].fillna(
-                df_se_data_mean[label][feat])
+                df_se_data_trun.loc[label_idx, feat] = df_se_data_trun.loc[label_idx, feat].fillna(
+                    df_se_data_population_mean[feat])
 
+#%% Load model and predict
+model_filename = './data/gbt_model_eval-hours{0}_seg-size-hours{1}.sav'.format(
+    total_num_hours, seg_size_hours)
+model = joblib.load(model_filename)
 
 X = df_se_data_trun.drop(['label', 'icustay_id'], axis=1)
 y = df_se_data_trun['label']
 
-from sklearn.model_selection import train_test_split
-
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import GridSearchCV
-from sklearn import svm
-
-parameters = {'kernel': ('linear', 'rbf'), 'C': [0.1, 1, 10]}
-svc = svm.SVC()
-clf = GridSearchCV(svc, parameters, n_jobs=2, cv=3, verbose=9)
-clf.fit(X_train, y_train)
-
-rf = RandomForestClassifier()
-
-rf.fit(X_train, y_train)
-
-rf.score(X_test, y_test)
-y_pred = rf.predict(X_test)
+print(model.predict(X))
+print(y)
