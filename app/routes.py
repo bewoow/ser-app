@@ -3,7 +3,7 @@
 from flask import render_template, request, redirect
 
 from app import app
-from app.lib import get_se_cohort, get_chart_data, create_bokeh_viz
+from app.lib import get_se_cohort, get_chart_data, create_bokeh_viz_chartdata
 
 import numpy as np
 from functools import lru_cache
@@ -70,10 +70,10 @@ def plot():
     sel_icustay_id = request.args.get("sel_id")
     chart_data, vital_signs = get_chart_data_to_plot(sel_icustay_id)
 
-    script, div = create_bokeh_viz(chart_data, sel_vital_sign)
+    script_chartdata, div_chartdata = create_bokeh_viz_chartdata(chart_data, sel_vital_sign)
 
     return render_template('plot.html', sel_icustay_id=sel_icustay_id, vital_signs=vital_signs, \
-                           sel_vs=sel_vital_sign, script=script, div=div)
+                           sel_vs=sel_vital_sign, script_chartdata=script_chartdata, div_chartdata=div_chartdata)
 
 
 @lru_cache()

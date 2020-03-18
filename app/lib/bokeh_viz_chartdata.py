@@ -27,7 +27,7 @@ CHART_DATA_DETAIL = {'HR': 'Heart Rate', 'SBP': 'Systolic Blood Pressure',\
 BACKGROUND_COLOR = '#30404C'
 MAIN_PLOT_COLOR = '#B7C5D3'
 
-def create_bokeh_viz(chart_data, sel_vs):
+def create_bokeh_viz_chartdata(chart_data, sel_vs):
     # Extract selected vital sign
     source, unit = load_vital_sign(chart_data, sel_vs)
     plot = make_plot(source, sel_vs, unit)
