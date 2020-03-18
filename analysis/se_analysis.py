@@ -177,6 +177,7 @@ def compute_rsbi_ve(patient_data):
 
 seg_size_hours = 3
 seg_nptimedelta = np.timedelta64(seg_size_hours, 'h')
+# Functions that will be evaluated for each segment to get the feature vector.
 functions = ['mean', 'median', 'mode', 'kurtosis', 'skew', 'std']
 
 se_analysis_file = './data/se_analysis_{0}hours.h5'.format(seg_size_hours)
@@ -199,13 +200,18 @@ else:
 
         label_idx = 0  # label '1' close to event, increasing as we get further
 
+        # We find the unique charttimes and sort them so that we start from the
+        # last (when self extubation occurs) and when go back segment-by-segment
         sorted_charttimes = sorted(patient_data['charttime'].unique())
 
         seg_end_time = sorted_charttimes[-1]
         while seg_end_time > sorted_charttimes[0]:
             seg_start_time = seg_end_time - seg_nptimedelta
-            label_idx += 1
+            label_idx += 1  # label '1' close to event, increasing as we get further
 
+            # For every vital sign, we extract the data within each segment
+            # and compute the different functions (e.g., mean, variance) which
+            # will consist our feature vector
             for vital_sign in vital_signs:
                 df = patient_data[patient_data['vital_sign'] \
                     == vital_sign].sort_values(by='charttime')
@@ -236,39 +242,65 @@ else:
     df_se_analysis.to_hdf(se_analysis_file, 's')
 
 # We use only a portion of the dataset (few entries/patients longer than say 24hours )
-# Each group 3 or 4 hours
-# TODO: make the grouping adjustable
+# Each segment 3 or 4 hours
+# TODO: make the segments adjustable
 
-# group by label to find how many data we have per label
-label_groups = df_se_analysis.groupby('label')
+# Group by label/segment to find how many data we have per label
+segment_groups = df_se_analysis.groupby('label')
 
-# compute mean values for each data and each group -> to be used for imputation
-df_se_data_mean = pd.DataFrame({i: label_groups.get_group(i).mean(skipna=True) for i in label_groups.groups.keys()})
+# Compute mean values for each data and each group -> to be used for imputation
+df_se_data_mean = pd.DataFrame({i: segment_groups.get_group(i).mean(skipna=True) \
+    for i in segment_groups.groups.keys()})
 df_se_data_mean = df_se_data_mean.drop('icustay_id', axis=0)
 
-df_se_data = pd.concat([df_se_analysis.loc[group_idx]
-                        for i, group_idx in label_groups.groups.items() if i <= 8])  # for 3-hour seg (8*3 =24)
+# Extract only a few number of segments closer to the senf-extubation event
+# For example, if we use data for 24 hours prior to the event, which are binned
+# in 3-hour segments, we need segements with labels 1 through 8
+#
+#  -> this can be justified because the risk 24 hours prior to the event is
+# most possibly meaningless and MAINLY because we have fewer patients with
+# longer ICU stays
+# TODO: run statistics of number of patients with longer than e.g. 24 hours
+total_num_hours = 24
+num_segments = total_num_hours // seg_size_hours
+df_se_data_trun = pd.concat([df_se_analysis.loc[group_idx]
+                        for i, group_idx in segment_groups.groups.items() if i <= num_segments])  # for 3-hour seg (8*3 =24)
 
-# impute nan values
+# Remove features that do not have a lot of entries (i.e., NaNs) for each segment.
+segment_groups_trun = df_se_data_trun.groupby('label')
 
-vt_count_group = label_groups.count()
-max_entries_group = vt_count_group['icustay_id'].max()
-for vt in vt_count_group.columns:
-    if all(vt_count_group[vt] < max_entries_group * 2 / 3):
-        df_se_data = df_se_data.drop([vt], axis=1)
+feature_count_seg = segment_groups_trun.count()
+max_entries_seg = feature_count_seg['icustay_id'] # ICU stay is always not a NaN for each segment
+for feat in feature_count_seg.columns:
+    # Each feature should have at least 2/3 of the max entries per segment
+    if all(feature_count_seg[feat] < max_entries_seg * 2 / 3):
+        df_se_data_trun = df_se_data_trun.drop([feat], axis=1)
+    elif feat != 'icustay_id':
+        # Impute nan feature values with their averages
+        for label, label_idx in segment_groups_trun.groups.items():
+            df_se_data_trun.loc[label_idx, feat] = df_se_data_trun.loc[label_idx, feat].fillna(
+                df_se_data_mean[label][feat])
 
 
-X = df_se_data.drop(['label', 'icustay_id'], axis=1)
-y = df_se_data['label']
+X = df_se_data_trun.drop(['label', 'icustay_id'], axis=1)
+y = df_se_data_trun['label']
 
 from sklearn.model_selection import train_test_split
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.experimental import enable_iterative_imputer
-from sklearn.impute import (
-    SimpleImputer, KNNImputer, IterativeImputer, MissingIndicator)
+from sklearn.model_selection import GridSearchCV
+from sklearn import svm
+
+parameters = {'kernel': ('linear', 'rbf'), 'C': [0.1, 1, 10]}
+svc = svm.SVC()
+clf = GridSearchCV(svc, parameters, n_jobs=2, cv=3, verbose=9)
+clf.fit(X_train, y_train)
 
 rf = RandomForestClassifier()
-rf.fit(X, y)
+
+rf.fit(X_train, y_train)
+
+rf.score(X_test, y_test)
+y_pred = rf.predict(X_test)
